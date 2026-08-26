@@ -1,8 +1,8 @@
 {
   "$schema": "https://schema.tauri.app/config/2",
-  "productName": "RinkaScreamerOverlay",
+  "productName": "rinkaStreamTools",
   "version": "1.0.0",
-  "identifier": "com.mamoru.rinka.screamer-overlay",
+  "identifier": "com.mamoru.rinka.stream-tools",
   "build": {},
   "app": {
     "windows": [],

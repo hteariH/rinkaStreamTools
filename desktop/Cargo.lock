@@ -2531,9 +2531,10 @@ dependencies = [
 ]
 
 [[package]]
-name = "rinka-screamer-overlay"
+name = "rinka-stream-tools-desktop"
 version = "1.0.0"
 dependencies = [
+ "serde_json",
  "tauri",
  "tauri-build",
 ]

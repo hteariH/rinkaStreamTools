@@ -8,6 +8,30 @@ import { CONFIG_PATH, PUBLIC_DIR } from "./src/paths.js";
 import { log } from "./src/log.js";
 import { App } from "./src/app.js";
 
+/**
+ * Когда сервер запущен окном-приложением, оно передаёт свой pid. Закрылось
+ * приложение — уходим следом: иначе после аварийного завершения (или снятия через
+ * диспетчер задач) сервер остался бы висеть и держать порт до перезагрузки.
+ * Штатный выход приложение делает само, это подстраховка на всё остальное.
+ */
+function watchParent() {
+  const pid = Number(process.env.RINKA_PARENT_PID);
+  if (!Number.isInteger(pid) || pid <= 0) return;
+
+  const timer = setInterval(() => {
+    try {
+      // Сигнал 0 ничего не шлёт, только проверяет, что процесс существует.
+      process.kill(pid, 0);
+    } catch (error) {
+      // EPERM значит, что процесс жив, просто чужой — это не повод выходить.
+      if (error.code !== "ESRCH") return;
+      log.info("server", "приложение закрылось — выхожу");
+      process.exit(0);
+    }
+  }, 5000);
+  timer.unref();
+}
+
 async function main() {
   // Без public/ сервер поднимется, но будет молча отдавать 404 на всё — самая
   // вероятная причина этого в том, что exe вынули из папки dist и положили одиноко.
@@ -23,6 +47,8 @@ async function main() {
 
   const app = new App(config);
   await app.start();
+
+  watchParent();
 
   console.log("");
   console.log(`  Панель управления   http://localhost:${config.port}/`);
