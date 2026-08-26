@@ -1,0 +1,205 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>rinkaStreamTools — цель сбора</title>
+  <style>
+    /* ===== База: прозрачный фон для Browser Source в OBS ===== */
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    html, body {
+      background: transparent; height: 100%; overflow: hidden;
+      font-family: "Segoe UI", Roboto, system-ui, sans-serif; color: #fff;
+    }
+
+    #app { padding: 16px; }
+
+    .goal { position: relative; display: flex; flex-direction: column; gap: 8px; }
+    .title { font-size: 24px; font-weight: 800; letter-spacing: .01em; }
+    .title:empty { display: none; }
+
+    .track {
+      position: relative; height: 34px; overflow: hidden;
+      background: rgba(0, 0, 0, .55);
+    }
+    .fill {
+      position: absolute; inset: 0 auto 0 0; width: 0;
+      /* Ширина едет плавно: цифра прыгает, полоса — нет. */
+      transition: width .9s cubic-bezier(.2, .8, .25, 1);
+    }
+    .shine {
+      position: absolute; inset: 0; pointer-events: none;
+      background: linear-gradient(180deg, rgba(255, 255, 255, .28) 0%, rgba(255, 255, 255, 0) 55%);
+    }
+    .pct {
+      position: absolute; inset: 0; display: flex; align-items: center; justify-content: center;
+      font-size: 17px; font-weight: 800; font-variant-numeric: tabular-nums;
+      text-shadow: 0 1px 4px rgba(0, 0, 0, .85);
+    }
+
+    .amounts {
+      display: flex; align-items: baseline; gap: 8px;
+      font-size: 26px; font-weight: 800; font-variant-numeric: tabular-nums;
+    }
+    .amounts .of { font-size: 18px; font-weight: 600; opacity: .65; }
+
+    /* Прибавка от свежего доната: всплывает и тает. */
+    .bump {
+      position: absolute; right: 0; top: -6px;
+      font-size: 20px; font-weight: 800; opacity: 0;
+      pointer-events: none;
+    }
+    .bump.show { animation: bump 2.2s ease-out; }
+    @keyframes bump {
+      0%   { opacity: 0; transform: translateY(6px); }
+      15%  { opacity: 1; transform: translateY(-2px); }
+      70%  { opacity: 1; transform: translateY(-10px); }
+      100% { opacity: 0; transform: translateY(-22px); }
+    }
+
+    .goal.hit .fill { animation: pulse .7s ease-out; }
+    @keyframes pulse { 50% { filter: brightness(1.6); } }
+
+    .offline {
+      position: fixed; bottom: 8px; right: 12px;
+      font-size: 12px; opacity: .5; display: none;
+    }
+    .offline.show { display: block; }
+
+    /* ============================================================
+       ТЕМА: default — тёмная панель, золотая полоса
+       ============================================================ */
+    #app[data-theme="default"] .goal {
+      background: rgba(15, 15, 25, .72); border-radius: 18px; padding: 16px 20px;
+      backdrop-filter: blur(4px); box-shadow: 0 6px 24px rgba(0, 0, 0, .45);
+      text-shadow: 0 2px 6px rgba(0, 0, 0, .6);
+    }
+    #app[data-theme="default"] .track { border-radius: 999px; }
+    #app[data-theme="default"] .fill {
+      border-radius: 999px;
+      background: linear-gradient(90deg, #ffb347, #ffd54a);
+      box-shadow: 0 0 18px rgba(255, 200, 70, .55);
+    }
+    #app[data-theme="default"] .pct { color: #1a1405; }
+    #app[data-theme="default"] .amounts .now { color: #ffd54a; }
+    #app[data-theme="default"] .title { color: #fff; }
+    #app[data-theme="default"] .bump { color: #ffd54a; }
+
+    /* ============================================================
+       ТЕМА: slim — только полоска и цифры, без панели
+       ============================================================ */
+    #app[data-theme="slim"] .goal { gap: 6px; }
+    #app[data-theme="slim"] .track { height: 14px; border-radius: 999px; background: rgba(0, 0, 0, .65); }
+    #app[data-theme="slim"] .fill { border-radius: 999px; background: #7CFC7C; }
+    #app[data-theme="slim"] .pct { display: none; }
+    #app[data-theme="slim"] .title { font-size: 19px; text-shadow: 0 2px 8px #000; }
+    #app[data-theme="slim"] .amounts { font-size: 21px; text-shadow: 0 2px 8px #000; }
+    #app[data-theme="slim"] .amounts .now { color: #7CFC7C; }
+    #app[data-theme="slim"] .bump { color: #7CFC7C; }
+
+    /* ============================================================
+       ТЕМА: neon — циан по обсидиану, свечение и скан-линии
+       ============================================================ */
+    #app[data-theme="neon"] .goal {
+      background: rgba(4, 10, 16, .8); padding: 16px 20px;
+      border: 1px solid rgba(80, 230, 255, .5);
+      box-shadow: 0 0 22px rgba(0, 200, 255, .28), inset 0 0 22px rgba(0, 180, 255, .12);
+    }
+    #app[data-theme="neon"] .title {
+      color: #8ff0ff; font-family: "Consolas", monospace; text-transform: uppercase;
+      letter-spacing: .12em; font-size: 19px; text-shadow: 0 0 12px rgba(80, 230, 255, .8);
+    }
+    #app[data-theme="neon"] .track {
+      background: rgba(0, 30, 45, .85); border: 1px solid rgba(80, 230, 255, .35);
+    }
+    #app[data-theme="neon"] .fill {
+      background: linear-gradient(90deg, #0aa8c8, #6ff0ff);
+      box-shadow: 0 0 20px rgba(90, 230, 255, .8);
+    }
+    /* Скан-линии рисуются поверх заливки, а не под ней — иначе их не видно. */
+    #app[data-theme="neon"] .shine {
+      background: repeating-linear-gradient(180deg, rgba(0, 0, 0, .3) 0 2px, transparent 2px 4px);
+    }
+    #app[data-theme="neon"] .pct { color: #eaffff; font-family: "Consolas", monospace; }
+    #app[data-theme="neon"] .amounts { font-family: "Consolas", monospace; }
+    #app[data-theme="neon"] .amounts .now { color: #6ff0ff; text-shadow: 0 0 14px rgba(80, 230, 255, .9); }
+    #app[data-theme="neon"] .bump { color: #6ff0ff; font-family: "Consolas", monospace; }
+  </style>
+</head>
+<body>
+  <div id="app" data-theme="default">
+    <div class="goal" id="goal">
+      <div class="title" id="title"></div>
+      <div class="track">
+        <div class="fill" id="fill"></div>
+        <div class="shine"></div>
+        <div class="pct" id="pct">0%</div>
+      </div>
+      <div class="amounts">
+        <span class="now" id="now">0</span>
+        <span class="of">/ <span id="target">0</span> <span id="currency">USD</span></span>
+      </div>
+      <div class="bump" id="bump"></div>
+    </div>
+  </div>
+  <div class="offline" id="offline">нет связи</div>
+
+  <script>
+    const el = (id) => document.getElementById(id);
+    const app = el("app");
+    const goal = el("goal");
+    const THEMES = ["default", "slim", "neon"];
+
+    // Тему можно перебить прямо в адресе источника OBS: /goal?theme=neon
+    const params = new URLSearchParams(location.search);
+    const forcedTheme = THEMES.includes(params.get("theme")) ? params.get("theme") : null;
+
+    function fmt(value) {
+      const number = Number(value) || 0;
+      return Number.isInteger(number) ? String(number) : number.toFixed(2);
+    }
+
+    let lastCurrent = null;
+
+    function render(state) {
+      if (!state || state.type !== "goal") return;
+
+      const theme = forcedTheme || (THEMES.includes(state.theme) ? state.theme : "default");
+      if (app.dataset.theme !== theme) app.dataset.theme = theme;
+
+      el("title").textContent = state.title || "";
+      el("fill").style.width = `${state.percentage || 0}%`;
+      el("pct").textContent = `${Math.round(state.percentage || 0)}%`;
+      el("now").textContent = fmt(state.current);
+      el("target").textContent = fmt(state.target);
+      el("currency").textContent = state.currency || "";
+
+      // Прибавку показываем только когда сумма выросла — при первом снимке
+      // сравнивать не с чем, и «+123» на старте было бы неправдой.
+      if (lastCurrent !== null && state.current > lastCurrent) {
+        const bump = el("bump");
+        bump.textContent = `+${fmt(state.current - lastCurrent)}`;
+        bump.classList.remove("show");
+        void bump.offsetWidth;
+        bump.classList.add("show");
+
+        goal.classList.remove("hit");
+        void goal.offsetWidth;
+        goal.classList.add("hit");
+      }
+      lastCurrent = state.current;
+    }
+
+    let ws;
+    function connect() {
+      const proto = location.protocol === "https:" ? "wss" : "ws";
+      ws = new WebSocket(`${proto}://${location.host}/ws/goal`);
+      ws.onopen = () => el("offline").classList.remove("show");
+      ws.onmessage = (ev) => { try { render(JSON.parse(ev.data)); } catch {} };
+      ws.onclose = () => { el("offline").classList.add("show"); setTimeout(connect, 1500); };
+      ws.onerror = () => { try { ws.close(); } catch {} };
+    }
+    connect();
+  </script>
+</body>
+</html>

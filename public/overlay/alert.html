@@ -1,0 +1,168 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>rinkaStreamTools — алерты донатов</title>
+  <style>
+    /* ===== База: прозрачный фон для Browser Source в OBS ===== */
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    html, body {
+      background: transparent; height: 100%; overflow: hidden;
+      font-family: "Segoe UI", Roboto, system-ui, sans-serif; color: #fff;
+    }
+
+    #stage {
+      position: fixed; inset: 0;
+      display: flex; align-items: center; justify-content: center;
+      pointer-events: none;
+    }
+
+    .alert {
+      max-width: 78vw; padding: 22px 34px; text-align: center;
+      background: rgba(15, 15, 25, .78); border-radius: 20px;
+      backdrop-filter: blur(6px);
+      box-shadow: 0 10px 40px rgba(0, 0, 0, .55);
+      text-shadow: 0 2px 8px rgba(0, 0, 0, .75);
+      animation: in .5s cubic-bezier(.2, 1.3, .35, 1) both;
+    }
+    .alert.out { animation: out .45s ease-in both; }
+
+    .headline { font-size: clamp(24px, 3.4vw, 44px); font-weight: 800; line-height: 1.15; }
+    .donor { color: #ffd54a; }
+    .amount { color: #7CFC7C; white-space: nowrap; }
+    .message {
+      margin-top: 12px; font-size: clamp(16px, 2vw, 26px); line-height: 1.35;
+      opacity: .92; word-break: break-word;
+    }
+    .source {
+      margin-top: 10px; font-size: 13px; letter-spacing: .14em;
+      text-transform: uppercase; opacity: .45;
+    }
+
+    @keyframes in {
+      from { opacity: 0; transform: translateY(28px) scale(.9); }
+      to   { opacity: 1; transform: translateY(0) scale(1); }
+    }
+    @keyframes out {
+      from { opacity: 1; transform: translateY(0) scale(1); }
+      to   { opacity: 0; transform: translateY(-18px) scale(.96); }
+    }
+
+    .offline {
+      position: fixed; bottom: 8px; right: 12px;
+      font-size: 12px; opacity: .5; display: none;
+    }
+    .offline.show { display: block; }
+  </style>
+</head>
+<body>
+  <div id="stage"></div>
+  <div class="offline" id="offline">нет связи</div>
+
+  <script>
+    /*
+     * Оверлей алертов. Слушает /ws/alerts и показывает донаты по одному.
+     *
+     * Звук: положи файл public/alert.mp3 рядом с оверлеями — он заиграет вместе
+     * с алертом. Нет файла — алерт просто молчит, ошибки в консоли не будет.
+     *
+     * Отладка: /alerts?demo — показать пример, ничего не ожидая от сервера.
+     */
+    const SOUND_URL = "/alert.mp3";
+    const GAP_MS = 400;
+
+    const stage = document.getElementById("stage");
+    const params = new URLSearchParams(location.search);
+
+    const queue = [];
+    let playing = false;
+
+    // Есть ли файл со звуком, говорит сервер при подключении: сам оверлей за ним
+    // не ходит, иначе каждый запуск писал бы 404 в консоль браузера и в лог OBS.
+    let hasSound = false;
+
+    function node(tag, className, value) {
+      const element = document.createElement(tag);
+      if (className) element.className = className;
+      // Именно innerText: имя и сообщение донатера — чужой ввод.
+      if (value !== undefined) element.innerText = value;
+      return element;
+    }
+
+    function fmtAmount(data) {
+      const amount = Number(data.amount);
+      if (!Number.isFinite(amount)) return "";
+      const rounded = Number.isInteger(amount) ? amount : amount.toFixed(2);
+      return `${rounded} ${data.currency || ""}`.trim();
+    }
+
+    const SOURCES = { donationAlerts: "DonationAlerts", donatello: "Donatello" };
+
+    function show(data) {
+      const card = node("div", "alert");
+
+      const headline = node("div", "headline");
+      headline.appendChild(node("span", "donor", data.donorName || "Аноним"));
+      headline.appendChild(document.createTextNode(" — "));
+      headline.appendChild(node("span", "amount", fmtAmount(data)));
+      card.appendChild(headline);
+
+      if (data.message) card.appendChild(node("div", "message", data.message));
+      card.appendChild(node("div", "source", SOURCES[data.source] || data.source || ""));
+
+      stage.innerHTML = "";
+      stage.appendChild(card);
+
+      if (hasSound) new Audio(SOUND_URL).play().catch(() => { /* автовоспроизведение запретили */ });
+
+      const duration = Number(data.durationMs) || 7000;
+      setTimeout(() => {
+        card.classList.add("out");
+        setTimeout(() => {
+          stage.innerHTML = "";
+          playing = false;
+          playNext();
+        }, GAP_MS);
+      }, duration);
+    }
+
+    /* Донаты во время эфира идут пачками, поэтому показываем строго по одному. */
+    function playNext() {
+      if (playing || queue.length === 0) return;
+      playing = true;
+      show(queue.shift());
+    }
+
+    let ws;
+    function connect() {
+      const proto = location.protocol === "https:" ? "wss" : "ws";
+      ws = new WebSocket(`${proto}://${location.host}/ws/alerts`);
+      ws.onopen = () => document.getElementById("offline").classList.remove("show");
+      ws.onmessage = (ev) => {
+        let message;
+        try { message = JSON.parse(ev.data); } catch { return; }
+        if (message.type === "hello") { hasSound = Boolean(message.sound); return; }
+        if (message.type !== "alert") return;
+        queue.push(message);
+        playNext();
+      };
+      ws.onclose = () => {
+        document.getElementById("offline").classList.add("show");
+        setTimeout(connect, 1500);
+      };
+      ws.onerror = () => { try { ws.close(); } catch {} };
+    }
+
+    if (params.has("demo")) {
+      queue.push({
+        type: "alert", source: "donationAlerts", donorName: "Тестовый зритель",
+        amount: 25, currency: "USD", message: "проверка оверлея", durationMs: 7000,
+      });
+      playNext();
+    } else {
+      connect();
+    }
+  </script>
+</body>
+</html>

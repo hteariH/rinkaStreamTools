@@ -1,0 +1,63 @@
+// Собирает standalone-исполняемый файл (для текущей ОС) через esbuild + Node SEA.
+// Результат: dist/rinkaStreamTools(.exe). Рядом с ним нужны config.json и public/
+// (их кладёт в дистрибутив шаг упаковки / CI).
+//
+// Запуск: npm run build:exe   (требует Node 20+)
+
+import { build } from "esbuild";
+import { inject } from "postject";
+import { execFileSync } from "node:child_process";
+import {
+  mkdirSync, copyFileSync, readFileSync, writeFileSync, rmSync,
+} from "node:fs";
+import path from "node:path";
+import process from "node:process";
+import { fileURLToPath } from "node:url";
+
+const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
+const dist = path.join(root, "dist");
+const bundle = path.join(dist, "bundle.cjs");
+const blob = path.join(dist, "sea-prep.blob");
+const seaConfig = path.join(dist, "sea-config.json");
+
+const isWin = process.platform === "win32";
+const isMac = process.platform === "darwin";
+const exeName = isWin ? "rinkaStreamTools.exe" : "rinkaStreamTools";
+const exePath = path.join(dist, exeName);
+const FUSE = "NODE_SEA_FUSE_fce680ab2cc467b6e072b8b5df1996b2";
+
+rmSync(dist, { recursive: true, force: true });
+mkdirSync(dist, { recursive: true });
+
+console.log("[1/4] Сборка бандла (esbuild)...");
+await build({
+  entryPoints: [path.join(root, "server.js")],
+  bundle: true,
+  platform: "node",
+  format: "cjs",
+  target: "node20",
+  outfile: bundle,
+  // Необязательные нативные ускорители ws — оставляем внешними (ws сам ловит их отсутствие).
+  external: ["bufferutil", "utf-8-validate"],
+  // import.meta.url в CJS-бандле не используется (см. src/paths.js) — глушим предупреждение.
+  logOverride: { "empty-import-meta": "silent" },
+});
+
+console.log("[2/4] Генерация SEA-blob...");
+writeFileSync(seaConfig, JSON.stringify({
+  main: bundle,
+  output: blob,
+  disableExperimentalSEAWarning: true,
+}));
+execFileSync(process.execPath, ["--experimental-sea-config", seaConfig], { stdio: "inherit" });
+
+console.log("[3/4] Копирование бинарника Node...");
+copyFileSync(process.execPath, exePath);
+
+console.log("[4/4] Внедрение blob (postject)...");
+await inject(exePath, "NODE_SEA_BLOB", readFileSync(blob), {
+  sentinelFuse: FUSE,
+  ...(isMac ? { machoSegmentName: "NODE_SEA" } : {}),
+});
+
+console.log(`\nГотово: ${exePath}`);

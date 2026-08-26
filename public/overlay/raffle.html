@@ -1,0 +1,481 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>rinkaStreamTools — розыгрыш</title>
+  <style>
+    /* ===== База: прозрачный фон для Browser Source в OBS ===== */
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    html, body {
+      background: transparent; height: 100%; overflow: hidden;
+      font-family: "Segoe UI", Roboto, system-ui, sans-serif; color: #fff;
+    }
+    #fx { position: fixed; inset: 0; width: 100%; height: 100%; pointer-events: none; z-index: 0; }
+    #app { position: relative; z-index: 1; height: 100%; }
+
+    .panel {
+      position: relative; display: inline-flex; flex-direction: column; gap: 6px;
+      padding: 18px 26px; margin: 16px; overflow: visible;
+    }
+    .hint { font-size: 20px; opacity: .9; }
+    .row { display: flex; align-items: center; gap: 12px; font-weight: 800; line-height: 1; }
+    .row .icon { width: 1em; height: 1em; flex: 0 0 auto; color: #fff; }
+    .row-last { font-size: 26px; }
+    .row-count { font-size: 30px; }
+    .row-count .num { font-variant-numeric: tabular-nums; }
+
+    .winner {
+      margin-top: 8px; padding: 13px 18px; border-radius: 12px;
+      font-size: 28px; font-weight: 800; line-height: 1.1;
+      display: none; flex-direction: column; gap: 2px; position: relative;
+    }
+    .winner .wlabel { font-size: 16px; font-weight: 600; display: block; }
+    #app.drawn .winner { display: flex; }
+
+    /* доптекстуры конкретных тем — по умолчанию скрыты */
+    .scan, .sigil { display: none; }
+
+    .offline {
+      position: fixed; bottom: 8px; right: 12px;
+      font-size: 12px; opacity: .5; display: none; z-index: 2;
+    }
+    .offline.show { display: block; }
+
+    /* =========================================================
+       ТЕМА: default  (тёмная панель, золото + зелёный победитель)
+       ========================================================= */
+    #app[data-theme="default"] .panel {
+      background: rgba(15, 15, 25, .72); border-radius: 18px;
+      backdrop-filter: blur(4px); box-shadow: 0 6px 24px rgba(0, 0, 0, .45);
+      text-shadow: 0 2px 6px rgba(0, 0, 0, .6);
+    }
+    #app[data-theme="default"] .hint b { color: #ffd54a; }
+    #app[data-theme="default"] .row-count .num { color: #ffd54a; }
+    #app[data-theme="default"] .winner {
+      background: rgba(124, 252, 124, .15); border: 2px solid #7CFC7C; color: #7CFC7C;
+      border-radius: 14px; font-size: 30px; animation: pop .5s ease-out;
+    }
+    #app[data-theme="default"] .winner .wlabel { color: #cfe; font-size: 18px; }
+    @keyframes pop { 0%{transform:scale(.6);opacity:0} 60%{transform:scale(1.12);opacity:1} 100%{transform:scale(1)} }
+
+    /* =========================================================
+       ТЕМА: grimoire  (Обугленный гримуар — золото на угле)
+       ========================================================= */
+    #app[data-theme="grimoire"] .panel {
+      font-family: "Palatino Linotype","Book Antiqua",Palatino,Georgia,serif;
+      background: linear-gradient(180deg,rgba(28,20,12,.90),rgba(15,10,6,.92));
+      border: 1px solid rgba(233,182,76,.55); border-radius: 4px;
+      box-shadow: 0 10px 40px rgba(0,0,0,.55), inset 0 0 0 3px rgba(232,182,76,.10), inset 0 0 34px rgba(255,150,50,.08);
+    }
+    #app[data-theme="grimoire"] .panel::before,
+    #app[data-theme="grimoire"] .panel::after {
+      content:""; position:absolute; width:26px; height:26px; border:2px solid #e8b64c; opacity:.6; pointer-events:none;
+    }
+    #app[data-theme="grimoire"] .panel::before { top:6px; left:6px; border-right:0; border-bottom:0; }
+    #app[data-theme="grimoire"] .panel::after { bottom:6px; right:6px; border-left:0; border-top:0; }
+    #app[data-theme="grimoire"] .hint { color:#d9c39a; font-style:italic; font-size:18px; }
+    #app[data-theme="grimoire"] .hint b { font-style:normal; color:#ffe0a0; text-shadow:0 0 14px rgba(255,180,80,.5); }
+    #app[data-theme="grimoire"] .row-last {
+      font-variant:small-caps; letter-spacing:.02em;
+      background:linear-gradient(180deg,#fff2d6,#e0b567); -webkit-background-clip:text; background-clip:text; color:transparent;
+    }
+    #app[data-theme="grimoire"] .row-last .icon { color:#e8c987; filter:drop-shadow(0 0 6px rgba(255,180,80,.4)); }
+    #app[data-theme="grimoire"] .row-count { color:#f4e6c6; }
+    #app[data-theme="grimoire"] .row-count .icon { color:#b98f4a; }
+    #app[data-theme="grimoire"] .row-count .num { color:#ffe0a0; text-shadow:0 0 16px rgba(255,180,80,.45); }
+    #app[data-theme="grimoire"] .winner {
+      background:radial-gradient(120% 120% at 50% 0%,rgba(255,190,90,.20),rgba(90,50,20,.28));
+      border:1px solid rgba(255,200,110,.6); color:#ffdf9a; border-radius:12px;
+      font-variant:small-caps; letter-spacing:.02em; text-shadow:0 0 22px rgba(255,180,80,.55);
+    }
+    #app[data-theme="grimoire"] .winner .wlabel { color:#e9c78a; }
+    #app.drawn[data-theme="grimoire"] .winner { animation: sealGrimoire .7s cubic-bezier(.2,.9,.25,1) both; }
+    @keyframes sealGrimoire {
+      0%{transform:scale(.4) rotate(-8deg);filter:blur(3px);opacity:0}
+      55%{transform:scale(1.12) rotate(2deg);filter:blur(0);opacity:1}
+      100%{transform:scale(1) rotate(0)}
+    }
+
+    /* =========================================================
+       ТЕМА: rune  (Морозная руна — циан на обсидиане)
+       ========================================================= */
+    #app[data-theme="rune"] .panel {
+      font-family:"Segoe UI",system-ui,Roboto,Arial,sans-serif;
+      background:linear-gradient(180deg,rgba(16,26,36,.86),rgba(8,14,20,.9));
+      border:2px solid rgba(120,170,200,.28); border-radius:2px;
+      box-shadow:0 12px 40px rgba(0,0,0,.6), inset 0 2px 0 rgba(180,220,240,.14), inset 0 -2px 0 rgba(0,0,0,.5), inset 0 0 30px rgba(60,120,160,.10);
+    }
+    #app[data-theme="rune"] .panel::before,
+    #app[data-theme="rune"] .panel::after {
+      content:""; position:absolute; width:18px; height:18px; border:2px solid #8fe6ff; opacity:.5; pointer-events:none;
+    }
+    #app[data-theme="rune"] .panel::before { top:5px; right:5px; border-left:0; border-bottom:0; }
+    #app[data-theme="rune"] .panel::after { bottom:5px; left:5px; border-right:0; border-top:0; }
+    #app[data-theme="rune"] .hint { color:#9fc4d6; text-transform:uppercase; font-size:14px; letter-spacing:.24em; font-weight:600; }
+    #app[data-theme="rune"] .hint b { color:#d8f6ff; letter-spacing:.1em; text-shadow:0 0 12px rgba(140,230,255,.6); }
+    #app[data-theme="rune"] .row-last,
+    #app[data-theme="rune"] .row-count {
+      text-transform:uppercase; letter-spacing:.10em; color:#eaf6fb; font-size:26px;
+      text-shadow:0 1px 0 rgba(0,0,0,.6),0 -1px 0 rgba(180,220,240,.12);
+    }
+    #app[data-theme="rune"] .row-last { font-size:22px; }
+    #app[data-theme="rune"] .row-last .icon { color:#8fd6ee; filter:drop-shadow(0 0 6px rgba(140,230,255,.5)); }
+    #app[data-theme="rune"] .row-count .icon { color:#5f93aa; }
+    #app[data-theme="rune"] .row-count .num { color:#8fe6ff; text-shadow:0 0 18px rgba(140,230,255,.6); }
+    #app[data-theme="rune"] .winner {
+      background:linear-gradient(180deg,rgba(70,150,190,.16),rgba(20,50,70,.28));
+      border:1px solid rgba(150,230,255,.5); border-radius:3px; color:#d8f6ff;
+      text-transform:uppercase; letter-spacing:.12em; font-size:24px; text-shadow:0 0 24px rgba(140,230,255,.7);
+    }
+    #app[data-theme="rune"] .winner .wlabel { color:#a9d8e8; letter-spacing:.28em; }
+    #app.drawn[data-theme="rune"] .winner { animation: igniteRune .75s cubic-bezier(.16,1,.3,1) both; }
+    @keyframes igniteRune {
+      0%{transform:translateY(4px) scale(.96);letter-spacing:.5em;filter:brightness(2.2) blur(4px);opacity:0}
+      60%{filter:brightness(1.5) blur(0);opacity:1}
+      100%{transform:translateY(0) scale(1);letter-spacing:.12em;filter:brightness(1)}
+    }
+
+    /* =========================================================
+       ТЕМА: blood  (Кровавый пакт — багровый уголь + сигил)
+       ========================================================= */
+    #app[data-theme="blood"] .panel {
+      font-family:"Segoe UI",system-ui,sans-serif;
+      background:linear-gradient(180deg,rgba(26,9,11,.9),rgba(12,4,5,.92));
+      border:1px solid rgba(224,56,74,.4); border-radius:3px;
+      box-shadow:0 12px 42px rgba(0,0,0,.6), inset 0 0 0 3px rgba(224,56,74,.08), inset 0 0 30px rgba(160,20,30,.14);
+    }
+    #app[data-theme="blood"] .sigil {
+      display:block; position:absolute; z-index:0; left:50%; top:50%; transform:translate(-50%,-50%);
+      width:260px; height:260px; opacity:0; pointer-events:none; color:#e0384a;
+    }
+    #app[data-theme="blood"] .sigil svg { width:100%; height:100%; animation: spin 18s linear infinite; }
+    #app.drawn[data-theme="blood"] .sigil { animation: sigilIn .9s ease-out both; }
+    @keyframes spin { to { transform: rotate(360deg); } }
+    @keyframes sigilIn {
+      0%{opacity:0;transform:translate(-50%,-50%) scale(.6)}
+      100%{opacity:.5;transform:translate(-50%,-50%) scale(1)}
+    }
+    #app[data-theme="blood"] .hint { color:#d69a94; text-transform:uppercase; letter-spacing:.16em; font-size:14px; font-weight:600; }
+    #app[data-theme="blood"] .hint b { color:#ff7a5c; text-shadow:0 0 14px rgba(255,90,70,.6); }
+    #app[data-theme="blood"] .row-last,
+    #app[data-theme="blood"] .row-count { position:relative; z-index:2; }
+    #app[data-theme="blood"] .row-last {
+      font-family:Impact,Haettenschweiler,"Franklin Gothic Bold","Arial Narrow",sans-serif;
+      text-transform:uppercase; letter-spacing:.04em; font-size:29px; font-weight:400;
+      background:linear-gradient(180deg,#ffd8c4,#e0384a); -webkit-background-clip:text; background-clip:text; color:transparent;
+    }
+    #app[data-theme="blood"] .row-last .icon { color:#e0384a; filter:drop-shadow(0 0 7px rgba(224,56,74,.6)); }
+    #app[data-theme="blood"] .row-count {
+      font-family:Impact,Haettenschweiler,"Arial Narrow",sans-serif; font-size:32px; font-weight:400; color:#f0d3cb;
+    }
+    #app[data-theme="blood"] .row-count .icon { color:#a3323a; }
+    #app[data-theme="blood"] .row-count .num { color:#ff7a5c; text-shadow:0 0 18px rgba(255,90,70,.55); }
+    #app[data-theme="blood"] .winner {
+      z-index:2; background:radial-gradient(120% 130% at 50% 0%,rgba(224,56,74,.24),rgba(70,8,12,.4));
+      border:1px solid rgba(255,90,70,.55); border-radius:8px; color:#ff9a72;
+      font-family:Impact,Haettenschweiler,"Arial Narrow",sans-serif; font-weight:400;
+      text-transform:uppercase; letter-spacing:.05em; font-size:30px; text-shadow:0 0 26px rgba(255,90,70,.6);
+    }
+    #app[data-theme="blood"] .winner .wlabel { font-family:"Segoe UI",sans-serif; color:#e3a79c; letter-spacing:.2em; font-size:15px; }
+    #app.drawn[data-theme="blood"] .winner { animation: summonBlood .8s cubic-bezier(.2,.9,.25,1) both, emberPulse 2.4s ease-in-out .8s infinite; }
+    @keyframes summonBlood {
+      0%{transform:translateY(14px) scale(.8);filter:blur(4px) brightness(2);opacity:0}
+      60%{transform:translateY(0) scale(1.06);filter:blur(0) brightness(1.3);opacity:1}
+      100%{transform:translateY(0) scale(1);filter:brightness(1)}
+    }
+    @keyframes emberPulse { 0%,100%{text-shadow:0 0 20px rgba(255,90,70,.4)} 50%{text-shadow:0 0 34px rgba(255,120,80,.8)} }
+
+    /* =========================================================
+       ТЕМА: glitch  (SYSTEM FAILURE — циан × магента)
+       ========================================================= */
+    #app[data-theme="glitch"] .panel {
+      font-family:ui-monospace,"Cascadia Code",Consolas,"Courier New",monospace; overflow:hidden;
+      background:linear-gradient(180deg,rgba(8,14,22,.86),rgba(4,8,14,.9));
+      border:1px solid rgba(34,230,255,.45); border-radius:2px;
+      box-shadow:0 0 0 1px rgba(255,46,196,.14), 3px 0 22px rgba(255,46,196,.10), -3px 0 22px rgba(34,230,255,.12), 0 14px 40px rgba(0,0,0,.6);
+    }
+    #app[data-theme="glitch"] .panel::before,
+    #app[data-theme="glitch"] .panel::after {
+      content:""; position:absolute; width:15px; height:15px; border:2px solid #22e6ff; opacity:.8; pointer-events:none; z-index:6;
+    }
+    #app[data-theme="glitch"] .panel::before { top:5px; left:5px; border-right:0; border-bottom:0; }
+    #app[data-theme="glitch"] .panel::after { bottom:5px; right:5px; border-left:0; border-top:0; }
+    #app[data-theme="glitch"] .scan {
+      display:block; position:absolute; inset:0; z-index:5; pointer-events:none; opacity:.4;
+      background:repeating-linear-gradient(0deg, rgba(0,0,0,0) 0 2px, rgba(0,0,0,.3) 2px 3px);
+    }
+    #app[data-theme="glitch"] .scan::after {
+      content:""; position:absolute; left:0; right:0; top:-40px; height:40px;
+      background:linear-gradient(180deg,transparent,rgba(34,230,255,.15),transparent);
+      animation: scan 4.5s linear infinite;
+    }
+    @keyframes scan { 0%{top:-40px} 100%{top:100%} }
+    #app[data-theme="glitch"] .hint { color:#22e6ff; text-transform:uppercase; letter-spacing:.14em; font-size:14px; font-weight:600; }
+    #app[data-theme="glitch"] .hint b { color:#ff2ec4; text-shadow:0 0 12px rgba(255,46,196,.6); }
+    #app[data-theme="glitch"] .hint::after { content:"_"; color:#22e6ff; animation: caret 1s steps(1) infinite; }
+    @keyframes caret { 50%{opacity:0} }
+    #app[data-theme="glitch"] .row-last,
+    #app[data-theme="glitch"] .row-count { text-transform:uppercase; letter-spacing:.05em; font-weight:700; font-size:25px; }
+    #app[data-theme="glitch"] .row-last { color:#eafcff; font-size:21px; text-shadow:1px 0 rgba(255,46,196,.55),-1px 0 rgba(34,230,255,.55); }
+    #app[data-theme="glitch"] .row-last .icon { color:#ff2ec4; filter:drop-shadow(0 0 6px rgba(255,46,196,.6)); }
+    #app[data-theme="glitch"] .row-count { color:#dff9ff; }
+    #app[data-theme="glitch"] .row-count .icon { color:#2aa7c0; }
+    #app[data-theme="glitch"] .row-count .num { color:#22e6ff; text-shadow:0 0 16px rgba(34,230,255,.6); }
+    #app[data-theme="glitch"] .winner {
+      background:linear-gradient(180deg,rgba(34,230,255,.12),rgba(255,46,196,.14));
+      border:1px solid rgba(34,230,255,.5); border-radius:2px; color:#fff;
+      text-transform:uppercase; letter-spacing:.07em; font-size:23px; font-weight:700;
+    }
+    #app[data-theme="glitch"] .winner .wlabel { color:#ff2ec4; letter-spacing:.24em; font-size:14px; }
+    #app[data-theme="glitch"] .winner .wname { display:inline-block; text-shadow:2px 0 #ff2ec4,-2px 0 #22e6ff; }
+    #app.drawn[data-theme="glitch"] .winner { animation: glitchIn .5s steps(2) both; }
+    #app.drawn[data-theme="glitch"] .winner .wname { animation: glitchShift .45s steps(2) 1, flick 2.6s steps(1) .5s infinite; }
+    @keyframes glitchIn {
+      0%{opacity:0;clip-path:inset(0 0 100% 0)}
+      20%{opacity:1;clip-path:inset(38% 0 22% 0);transform:translateX(-5px)}
+      40%{clip-path:inset(8% 0 60% 0);transform:translateX(5px)}
+      60%{clip-path:inset(0)}
+      100%{opacity:1;clip-path:inset(0);transform:none}
+    }
+    @keyframes glitchShift {
+      0%{transform:translate(0)} 25%{transform:translate(-3px,1px)}
+      50%{transform:translate(3px,-1px)} 75%{transform:translate(-2px,0)} 100%{transform:translate(0)}
+    }
+    @keyframes flick { 0%,96%,100%{opacity:1} 97%{opacity:.35} 98%{opacity:.85} 99%{opacity:.5} }
+
+    /* =========================================================
+       Таймер обратного отсчёта до конца розыгрыша
+       ========================================================= */
+    .row-timer { font-size: 28px; }
+    .row-timer .num { font-variant-numeric: tabular-nums; letter-spacing: .02em; }
+    /* последние секунды — мигаем, чтобы привлечь внимание */
+    .row-timer.urgent { animation: timerPulse 1s ease-in-out infinite; }
+    .row-timer.ended { opacity: .8; }
+    /* на паузе — приглушаем и рисуем значок ⏸ */
+    .row-timer.paused { opacity: .6; }
+    .row-timer.paused .num::after { content: " ⏸"; font-size: .72em; }
+    @keyframes timerPulse { 0%,100%{opacity:1} 50%{opacity:.45} }
+
+    /* акцентный цвет цифр таймера — по темам (в тон счётчику) */
+    #app[data-theme="default"]  .row-timer .num { color:#ffd54a; }
+    #app[data-theme="grimoire"] .row-timer .num { color:#ffe0a0; text-shadow:0 0 16px rgba(255,180,80,.45); }
+    #app[data-theme="grimoire"] .row-timer { color:#f4e6c6; font-variant:small-caps; }
+    #app[data-theme="grimoire"] .row-timer .icon { color:#b98f4a; }
+    #app[data-theme="rune"]     .row-timer { text-transform:uppercase; letter-spacing:.10em; color:#eaf6fb; font-size:24px; }
+    #app[data-theme="rune"]     .row-timer .num { color:#8fe6ff; text-shadow:0 0 18px rgba(140,230,255,.6); }
+    #app[data-theme="rune"]     .row-timer .icon { color:#5f93aa; }
+    #app[data-theme="blood"]    .row-timer { position:relative; z-index:2; font-family:Impact,Haettenschweiler,"Arial Narrow",sans-serif; font-size:30px; color:#f0d3cb; }
+    #app[data-theme="blood"]    .row-timer .num { color:#ff7a5c; text-shadow:0 0 18px rgba(255,90,70,.55); }
+    #app[data-theme="blood"]    .row-timer .icon { color:#a3323a; }
+    #app[data-theme="glitch"]   .row-timer { position:relative; z-index:2; text-transform:uppercase; letter-spacing:.05em; font-weight:700; font-size:25px; color:#dff9ff; }
+    #app[data-theme="glitch"]   .row-timer .num { color:#22e6ff; text-shadow:0 0 16px rgba(34,230,255,.6); }
+    #app[data-theme="glitch"]   .row-timer .icon { color:#2aa7c0; }
+
+    @media (prefers-reduced-motion: reduce) {
+      * { animation-duration: .001ms !important; animation-iteration-count: 1 !important; }
+    }
+  </style>
+</head>
+<body>
+  <canvas id="fx"></canvas>
+  <div id="app" data-theme="default">
+    <div class="panel">
+      <!-- развёртки (тема glitch) -->
+      <div class="scan" aria-hidden="true"></div>
+      <!-- сигил призыва (тема blood) -->
+      <div class="sigil" aria-hidden="true">
+        <svg viewBox="0 0 100 100" fill="none" stroke="currentColor" stroke-width="1">
+          <circle cx="50" cy="50" r="47"/>
+          <circle cx="50" cy="50" r="38" stroke-dasharray="2 4"/>
+          <circle cx="50" cy="50" r="30"/>
+          <polygon points="50,10 85,72 15,72" stroke-width=".8"/>
+          <polygon points="50,90 85,28 15,28" stroke-width=".8"/>
+        </svg>
+      </div>
+      <div class="hint">Пиши <b id="cmd">!хил</b> в чат</div>
+
+      <div class="row row-last" id="last-wrap" style="display:none">
+        <svg class="icon" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+          <path d="M12 12a5 5 0 1 0 0-10 5 5 0 0 0 0 10Zm0 2c-5 0-9 2.6-9 6.2V21h18v-.8c0-3.6-4-6.2-9-6.2Z"/>
+        </svg>
+        <b id="last">—</b>
+      </div>
+
+      <div class="row row-count">
+        <svg class="icon" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+          <path d="M9 11a3.5 3.5 0 1 0 0-7 3.5 3.5 0 0 0 0 7Zm7.5-.5a3 3 0 1 0 0-6 3 3 0 0 0 0 6ZM9 12.5c-3.7 0-6.7 2-6.7 4.7V19h13.4v-1.8c0-2.7-3-4.7-6.7-4.7Zm7.5.6c-.7 0-1.4.1-2 .3 1.6 1.1 2.6 2.7 2.6 4.6V19h5.1v-1.4c0-2.5-2.6-4.5-5.7-4.5Z"/>
+        </svg>
+        <span class="num" id="count">0</span>
+      </div>
+
+      <div class="row row-timer" id="timer-wrap" style="display:none">
+        <svg class="icon" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+          <path d="M12 2a9 9 0 1 0 0 18 9 9 0 0 0 0-18Zm0 2a7 7 0 1 1 0 14 7 7 0 0 1 0-14Zm-1 3v5l4 2.5.9-1.5-3.4-2.1V7H11Z"/>
+        </svg>
+        <span class="num" id="timer">0:00</span>
+      </div>
+
+      <div class="winner" id="winner">
+        <span class="wlabel" id="winner-label">🎉 Победитель</span>
+        <span class="wname" id="winner-name">—</span>
+      </div>
+    </div>
+  </div>
+  <div class="offline" id="offline">нет связи с сервером…</div>
+
+  <script>
+    const el = (id) => document.getElementById(id);
+    const app = el("app");
+
+    const LABELS = {
+      default:  "🎉 Победитель",
+      grimoire: "✦ Избранник ✦",
+      rune:     "◆ Избран ◆",
+      blood:    "✦ Жертва избрана ✦",
+      glitch:   "▸ SUBJECT SELECTED ◂",
+    };
+
+    // ---------- фоновые частицы (Canvas), перезапуск при смене темы ----------
+    const reduce = matchMedia("(prefers-reduced-motion: reduce)").matches;
+    const cv = el("fx"), ctx = cv.getContext("2d");
+    let W = 0, H = 0, dpr = Math.min(devicePixelRatio || 1, 2);
+    let parts = [], cfg = null, raf = null;
+
+    function resize() { W = cv.width = innerWidth * dpr; H = cv.height = innerHeight * dpr; }
+    resize(); addEventListener("resize", resize);
+
+    function spawn() {
+      return {
+        x: Math.random() * W,
+        y: cfg.dir < 0 ? H + Math.random() * H * .2 : -Math.random() * H * .2,
+        r: (Math.random() * cfg.size + cfg.size * .4) * dpr,
+        vy: (Math.random() * cfg.speed + cfg.speed * .4) * cfg.dir * dpr,
+        vx: (Math.random() - .5) * cfg.drift * dpr,
+        a: Math.random() * .5 + .2, tw: Math.random() * 6.28,
+      };
+    }
+    function setParticles(c) {
+      cfg = c; parts = [];
+      if (!c || reduce) { ctx.clearRect(0, 0, W, H); return; }
+      for (let i = 0; i < c.count; i++) { const p = spawn(); p.y = Math.random() * H; parts.push(p); }
+      if (!raf) loop();
+    }
+    function loop() {
+      raf = requestAnimationFrame(loop);
+      ctx.clearRect(0, 0, W, H);
+      if (!cfg) return;
+      for (const p of parts) {
+        p.y += p.vy; p.x += p.vx; p.tw += .04;
+        const fl = .6 + .4 * Math.sin(p.tw);
+        if (p.y < -30 || p.y > H + 30 || p.x < -30 || p.x > W + 30) Object.assign(p, spawn());
+        ctx.fillStyle = cfg.color(p.a * fl, p);
+        ctx.shadowBlur = cfg.glow * dpr; ctx.shadowColor = cfg.shadow;
+        if (cfg.shape === "square") { ctx.fillRect(p.x, p.y, p.r * 2.2, p.r * 2.2); }
+        else { ctx.beginPath(); ctx.arc(p.x, p.y, p.r, 0, 6.28); ctx.fill(); }
+      }
+    }
+    const FX = {
+      default: null,
+      grimoire: { count:34, dir:-1, speed:.35, size:1.4, drift:.5, glow:8, shadow:"rgba(255,170,70,.8)", color:a=>`rgba(255,${170+Math.random()*40|0},90,${a})` },
+      rune:     { count:40, dir: 1, speed:.28, size:1.3, drift:.7, glow:6, shadow:"rgba(150,230,255,.7)", color:a=>`rgba(200,240,255,${a})` },
+      blood:    { count:32, dir:-1, speed:.4,  size:1.5, drift:.4, glow:9, shadow:"rgba(255,80,60,.8)",  color:a=>`rgba(255,${70+Math.random()*50|0},60,${a})` },
+      glitch:   null,
+    };
+
+    // ---------- обратный отсчёт ----------
+    // Сервер присылает timerEndsAt (epoch ms). Тикаем локально от абсолютного
+    // времени — это самокорректируется и не требует частых сообщений с сервера.
+    let timerEndsAt = null, timerPaused = null, timerTick = null;
+
+    function fmtTime(sec) {
+      const s = Math.max(0, Math.floor(sec));
+      const h = Math.floor(s / 3600);
+      const mm = Math.floor((s % 3600) / 60);
+      const ss = s % 60;
+      const pad = (n) => String(n).padStart(2, "0");
+      return h > 0 ? `${h}:${pad(mm)}:${pad(ss)}` : `${mm}:${pad(ss)}`;
+    }
+
+    function updateTimer() {
+      const wrap = el("timer-wrap");
+      // Пауза — показываем замороженный остаток, без тика.
+      if (timerPaused !== null) {
+        wrap.style.display = "";
+        el("timer").textContent = fmtTime(timerPaused);
+        wrap.classList.remove("urgent", "ended");
+        wrap.classList.add("paused");
+        return;
+      }
+      wrap.classList.remove("paused");
+      if (timerEndsAt === null) { wrap.style.display = "none"; return; }
+      const left = Math.max(0, (timerEndsAt - Date.now()) / 1000);
+      wrap.style.display = "";
+      el("timer").textContent = fmtTime(left);
+      wrap.classList.toggle("urgent", left > 0 && left <= 10);
+      wrap.classList.toggle("ended", left <= 0);
+    }
+
+    function applyTimer(endsAt, pausedRemaining) {
+      timerPaused = (typeof pausedRemaining === "number" && pausedRemaining > 0) ? pausedRemaining : null;
+      timerEndsAt = (timerPaused === null && typeof endsAt === "number" && endsAt > 0) ? endsAt : null;
+      if (timerTick) { clearInterval(timerTick); timerTick = null; }
+      updateTimer();
+      // Тикаем только когда таймер реально идёт (не на паузе).
+      if (timerEndsAt !== null) timerTick = setInterval(updateTimer, 250);
+    }
+
+    // ---------- рендер снапшота ----------
+    let curTheme = null, lastWinner = null;
+
+    function retrigger() { app.classList.remove("drawn"); void app.offsetWidth; app.classList.add("drawn"); }
+
+    function applyTheme(theme) {
+      if (!(theme in LABELS)) theme = "default";
+      app.dataset.theme = theme;
+      el("winner-label").textContent = LABELS[theme];
+      setParticles(FX[theme]);
+      curTheme = theme;
+      if (app.classList.contains("drawn")) retrigger(); // проиграть анимацию победителя в новой теме
+    }
+
+    function render(s) {
+      if (!s) return;
+      el("cmd").textContent = s.command || "!хил";
+      el("count").textContent = s.count ?? 0;
+
+      if (s.last && s.last.name) { el("last-wrap").style.display = ""; el("last").textContent = s.last.name; }
+      else { el("last-wrap").style.display = "none"; }
+
+      const theme = s.theme || "default";
+      if (theme !== curTheme) applyTheme(theme);
+
+      applyTimer(s.timerEndsAt ?? null, s.timerPausedRemaining ?? null);
+
+      const wname = s.winner && s.winner.name ? s.winner.name : null;
+      if (wname) {
+        el("winner-name").textContent = wname;
+        if (wname !== lastWinner) retrigger(); // новый победитель — проиграть анимацию (а не на каждый апдейт счётчика)
+      } else {
+        app.classList.remove("drawn");
+      }
+      lastWinner = wname;
+    }
+
+    // первичная инициализация темы (до первого снапшота)
+    applyTheme("default");
+
+    // ---------- WebSocket ----------
+    let ws;
+    function connect() {
+      const proto = location.protocol === "https:" ? "wss" : "ws";
+      ws = new WebSocket(`${proto}://${location.host}/ws/raffle`);
+      ws.onopen = () => el("offline").classList.remove("show");
+      ws.onmessage = (ev) => { try { render(JSON.parse(ev.data)); } catch {} };
+      ws.onclose = () => { el("offline").classList.add("show"); setTimeout(connect, 1500); };
+      ws.onerror = () => { try { ws.close(); } catch {} };
+    }
+    connect();
+  </script>
+</body>
+</html>

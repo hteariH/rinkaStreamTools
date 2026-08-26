@@ -1,0 +1,310 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>rinkaStreamTools</title>
+  <link rel="stylesheet" href="/panel.css" />
+</head>
+<body>
+  <header class="top">
+    <div class="brand">
+      <span class="brand__name">rinkaStreamTools</span>
+      <span class="brand__hint">панель управления</span>
+    </div>
+    <div class="statuses" id="statuses"></div>
+  </header>
+
+  <nav class="tabs" id="tabs">
+    <button class="tab is-active" data-tab="raffle">Розыгрыш</button>
+    <button class="tab" data-tab="donations">Донаты</button>
+    <button class="tab" data-tab="obs">Источники для OBS</button>
+    <button class="tab" data-tab="log">Лог</button>
+  </nav>
+
+  <main>
+    <!-- ======================================================= РОЗЫГРЫШ -->
+    <section class="page is-active" data-page="raffle">
+      <div class="grid">
+        <div class="card">
+          <h2>Розыгрыш</h2>
+
+          <div class="stat-row">
+            <div class="stat">
+              <span class="stat__value" id="r-count">0</span>
+              <span class="stat__label">участников</span>
+            </div>
+            <div class="stat">
+              <span class="stat__value" id="r-remaining">0</span>
+              <span class="stat__label">ещё могут выпасть</span>
+            </div>
+          </div>
+
+          <div class="winner" id="r-winner-box">
+            <span class="winner__label">Победитель</span>
+            <span class="winner__name" id="r-winner">—</span>
+          </div>
+
+          <div class="actions">
+            <button class="btn btn--primary" id="r-draw">Разыграть</button>
+            <button class="btn btn--danger" id="r-restart">Сбросить</button>
+          </div>
+
+          <label class="field">
+            <span>Команда в чате</span>
+            <input type="text" id="r-command" placeholder="!хил" />
+          </label>
+
+          <label class="field">
+            <span>Тема оверлея</span>
+            <select id="r-theme">
+              <option value="default">default — тёмная панель, золото</option>
+              <option value="grimoire">grimoire — обугленный гримуар</option>
+              <option value="rune">rune — морозная руна</option>
+              <option value="blood">blood — кровавый пакт</option>
+              <option value="glitch">glitch — system failure</option>
+            </select>
+          </label>
+
+          <label class="field">
+            <span>AxelChat (WebSocket)</span>
+            <input type="text" id="r-axelchat" placeholder="ws://127.0.0.1:8356" />
+          </label>
+        </div>
+
+        <div class="card">
+          <h2>Таймер до конца</h2>
+          <div class="timer" id="r-timer">выключен</div>
+          <div class="actions">
+            <input type="text" id="r-timer-value" class="inline-input" placeholder="90, 5m, 2m30s, 1:30" />
+            <button class="btn btn--primary" id="r-timer-start">Пуск</button>
+          </div>
+          <div class="actions">
+            <button class="btn" id="r-timer-pause">Пауза</button>
+            <button class="btn" id="r-timer-resume">Продолжить</button>
+            <button class="btn" id="r-timer-stop">Убрать</button>
+          </div>
+
+          <h2 class="mt">Участники</h2>
+          <div class="actions">
+            <input type="text" id="r-add-name" class="inline-input" placeholder="добавить вручную" />
+            <button class="btn" id="r-add">Добавить</button>
+          </div>
+          <ul class="people" id="r-people"></ul>
+        </div>
+      </div>
+    </section>
+
+    <!-- ========================================================= ДОНАТЫ -->
+    <section class="page" data-page="donations">
+      <div class="grid">
+        <div class="card">
+          <h2>Общая цель</h2>
+          <div class="goal-now">
+            <span id="g-current">0</span>
+            <span class="goal-now__of">/ <span id="g-target-view">0</span> <span id="g-currency-view"></span></span>
+          </div>
+          <div class="bar"><div class="bar__fill" id="g-fill"></div></div>
+          <div class="breakdown" id="g-breakdown"></div>
+          <div class="actions">
+            <button class="btn" id="g-refresh">Обновить суммы</button>
+          </div>
+
+          <label class="field">
+            <span>Подпись на оверлее</span>
+            <input type="text" id="g-title" placeholder="например: На RTX 5070" />
+          </label>
+          <div class="field-row">
+            <label class="field">
+              <span>Цель</span>
+              <input type="number" id="g-target" step="1" min="0" />
+            </label>
+            <label class="field">
+              <span>Валюта</span>
+              <input type="text" id="g-currency" placeholder="USD" />
+            </label>
+          </div>
+          <div class="field-row">
+            <label class="field">
+              <span>Добавка вручную</span>
+              <input type="number" id="g-offset" step="0.01" />
+            </label>
+            <label class="field">
+              <span>Опрос, сек</span>
+              <input type="number" id="g-poll" step="5" min="10" />
+            </label>
+          </div>
+          <label class="field">
+            <span>Тема оверлея цели</span>
+            <select id="g-theme">
+              <option value="default">default — панель и золотая полоса</option>
+              <option value="slim">slim — тонкая полоска без панели</option>
+              <option value="neon">neon — циан по обсидиану</option>
+            </select>
+          </label>
+        </div>
+
+        <div class="card">
+          <h2>Площадки</h2>
+
+          <div class="source" data-source="donationAlerts">
+            <label class="switch">
+              <input type="checkbox" id="da-enabled" />
+              <span>DonationAlerts</span>
+            </label>
+            <label class="field">
+              <span>Ссылка на виджет цели</span>
+              <input type="text" id="da-url" placeholder="https://www.donationalerts.com/widget/goal/…?token=…" />
+            </label>
+            <label class="field">
+              <span>Множитель к валюте цели</span>
+              <input type="number" id="da-rate" step="0.0001" min="0" />
+            </label>
+          </div>
+
+          <div class="source" data-source="donatello">
+            <label class="switch">
+              <input type="checkbox" id="dt-enabled" />
+              <span>Donatello</span>
+            </label>
+            <label class="field">
+              <span>Ссылка на виджет</span>
+              <input type="text" id="dt-url" placeholder="https://donatello.to/widget/…/token/…" />
+            </label>
+            <label class="field">
+              <span>Множитель к валюте цели</span>
+              <input type="number" id="dt-rate" step="0.0001" min="0" />
+            </label>
+          </div>
+
+          <p class="note">
+            Обе площадки читаются через страницу виджета — ту же ссылку, что вставляется
+            в OBS. Логин и пароль не нужны и нигде не хранятся.
+          </p>
+        </div>
+
+        <div class="card">
+          <h2>Алерты донатов</h2>
+          <label class="switch">
+            <input type="checkbox" id="a-enabled" />
+            <span>Показывать алерты</span>
+          </label>
+          <div class="field-row">
+            <label class="field">
+              <span>Держать на экране, сек</span>
+              <input type="number" id="a-duration" step="0.5" min="1" />
+            </label>
+            <label class="field">
+              <span>Минимальная сумма</span>
+              <input type="number" id="a-min" step="0.01" min="0" />
+            </label>
+          </div>
+          <p class="note">
+            Звук: положи файл <code>public/alert.mp3</code> — он заиграет вместе с алертом.
+          </p>
+        </div>
+
+        <div class="card">
+          <h2>Скримеры</h2>
+          <label class="switch">
+            <input type="checkbox" id="s-enabled" />
+            <span>Включить скримеры</span>
+          </label>
+          <div class="field-row">
+            <label class="field">
+              <span>Длительность, сек</span>
+              <input type="number" id="s-duration" step="0.5" min="1" />
+            </label>
+            <label class="field">
+              <span>Базовая валюта</span>
+              <input type="text" id="s-base" placeholder="USD" />
+            </label>
+          </div>
+          <label class="field">
+            <span>Перекрытие игры: <b id="s-opacity-view">0.75</b></span>
+            <input type="range" id="s-opacity" min="0.1" max="1" step="0.05" />
+          </label>
+
+          <h3>Пороги по валютам</h3>
+          <p class="note">
+            Порог сравнивается с суммой в той же валюте — курсы не применяются.
+            <code>default</code> — для валют, которых нет в списке.
+          </p>
+          <div class="thresholds" id="s-thresholds"></div>
+          <div class="actions">
+            <input type="text" id="s-new-currency" class="inline-input inline-input--short" placeholder="код" />
+            <input type="number" id="s-new-amount" class="inline-input inline-input--short" placeholder="сумма" />
+            <button class="btn" id="s-add-threshold">Добавить валюту</button>
+          </div>
+        </div>
+
+        <div class="card">
+          <h2>Проверка</h2>
+          <p class="note">
+            Прогоняет тестовый донат по всей цепочке: алерт и скример увидишь так же,
+            как на эфире. Общая сумма от теста не растёт.
+          </p>
+          <div class="field-row">
+            <label class="field">
+              <span>Сумма</span>
+              <input type="number" id="t-amount" step="0.01" value="25" />
+            </label>
+            <label class="field">
+              <span>Валюта</span>
+              <input type="text" id="t-currency" placeholder="USD" />
+            </label>
+          </div>
+          <label class="field">
+            <span>Имя</span>
+            <input type="text" id="t-name" placeholder="Тестовый зритель" />
+          </label>
+          <label class="field">
+            <span>Сообщение</span>
+            <input type="text" id="t-message" placeholder="проверка связи" />
+          </label>
+          <label class="field">
+            <span>Вариация скримера</span>
+            <select id="t-variant">
+              <option value="">случайная</option>
+              <option value="lunge">lunge — бросок на камеру</option>
+              <option value="flash">flash — подсечка</option>
+              <option value="strobe">strobe — строб</option>
+              <option value="flashlight">flashlight — фонарь</option>
+              <option value="blood">blood — кровь на объективе</option>
+              <option value="vhs">vhs — помехи</option>
+              <option value="creep">creep — подкрадывается</option>
+            </select>
+          </label>
+          <div class="actions">
+            <button class="btn btn--primary" id="t-send">Прогнать донат</button>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ============================================== ИСТОЧНИКИ ДЛЯ OBS -->
+    <section class="page" data-page="obs">
+      <div class="card">
+        <h2>Browser Source в OBS</h2>
+        <p class="note">
+          Добавь в OBS источник <b>Browser</b> и вставь адрес. Фон у всех оверлеев
+          прозрачный. Скример и алерты лучше растянуть на весь холст, розыгрыш и
+          цель — поставить в угол.
+        </p>
+        <ul class="urls" id="obs-urls"></ul>
+      </div>
+    </section>
+
+    <!-- ============================================================ ЛОГ -->
+    <section class="page" data-page="log">
+      <div class="card">
+        <h2>Лог</h2>
+        <div class="log" id="log"></div>
+      </div>
+    </section>
+  </main>
+
+  <div class="toast" id="toast"></div>
+  <script src="/panel.js"></script>
+</body>
+</html>

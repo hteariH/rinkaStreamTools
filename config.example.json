@@ -1,0 +1,47 @@
+{
+  "port": 3777,
+  "raffle": {
+    "axelchatUrl": "ws://127.0.0.1:8356",
+    "command": "!хил",
+    "theme": "default"
+  },
+  "donationAlerts": {
+    "enabled": false,
+    "widgetUrl": "",
+    "rate": 1
+  },
+  "donatello": {
+    "enabled": false,
+    "widgetUrl": "",
+    "rate": 1
+  },
+  "goal": {
+    "target": 700,
+    "currency": "USD",
+    "title": "",
+    "manualOffset": 0,
+    "pollIntervalMs": 60000,
+    "theme": "default"
+  },
+  "alerts": {
+    "enabled": true,
+    "durationMs": 7000,
+    "minAmount": 0
+  },
+  "screamer": {
+    "enabled": true,
+    "durationMs": 5000,
+    "opacity": 0.75,
+    "baseCurrency": "USD",
+    "minAmounts": {
+      "USD": 3,
+      "USDT": 3,
+      "EUR": 3,
+      "UAH": 100,
+      "RUB": 250,
+      "KZT": 1300,
+      "BYN": 8,
+      "default": 4
+    }
+  }
+}
