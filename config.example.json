@@ -25,23 +25,73 @@
   },
   "alerts": {
     "enabled": true,
-    "durationMs": 7000,
-    "minAmount": 0
+    "tiers": [
+      {
+        "id": "small",
+        "name": "Мелкий",
+        "durationMs": 5000,
+        "screamer": false,
+        "sources": {
+          "donationAlerts": true,
+          "donatello": true
+        },
+        "minAmounts": {
+          "USD": 1,
+          "USDT": 1,
+          "EUR": 1,
+          "UAH": 40,
+          "RUB": 100,
+          "KZT": 500,
+          "BYN": 3,
+          "default": 1
+        }
+      },
+      {
+        "id": "medium",
+        "name": "Средний",
+        "durationMs": 7000,
+        "screamer": true,
+        "sources": {
+          "donationAlerts": true,
+          "donatello": true
+        },
+        "minAmounts": {
+          "USD": 5,
+          "USDT": 5,
+          "EUR": 5,
+          "UAH": 200,
+          "RUB": 450,
+          "KZT": 2500,
+          "BYN": 15,
+          "default": 5
+        }
+      },
+      {
+        "id": "big",
+        "name": "Крупный",
+        "durationMs": 9000,
+        "screamer": true,
+        "sources": {
+          "donationAlerts": true,
+          "donatello": true
+        },
+        "minAmounts": {
+          "USD": 20,
+          "USDT": 20,
+          "EUR": 20,
+          "UAH": 800,
+          "RUB": 1800,
+          "KZT": 10000,
+          "BYN": 60,
+          "default": 20
+        }
+      }
+    ]
   },
   "screamer": {
     "enabled": true,
-    "durationMs": 5000,
     "opacity": 0.75,
-    "baseCurrency": "USD",
-    "minAmounts": {
-      "USD": 3,
-      "USDT": 3,
-      "EUR": 3,
-      "UAH": 100,
-      "RUB": 250,
-      "KZT": 1300,
-      "BYN": 8,
-      "default": 4
-    }
+    "durationMs": 5000,
+    "baseCurrency": "USD"
   }
 }

@@ -1,13 +1,14 @@
 {
   "name": "rinka-stream-tools",
   "version": "1.0.0",
-  "description": "Локальный набор оверлеев для стрима: розыгрыш по чату, общая цель сбора (DonationAlerts + Donatello), алерты донатов и скримеры. Всё на одном localhost-порту, управление через веб-панель.",
+  "description": "Локальный набор оверлеев для стрима: розыгрыш по чату, общая цель сбора (DonationAlerts + Donatello), алерты донатов по тирам и скримеры. Панель управления в окне приложения, всё работает на localhost.",
   "type": "module",
   "main": "server.js",
   "scripts": {
     "start": "node server.js",
     "mock": "node tools/mock-axelchat.js",
-    "build:exe": "node scripts/build-sea.mjs"
+    "build:exe": "node scripts/build-sea.mjs",
+    "test": "node --test \"test/*.test.mjs\""
   },
   "license": "MIT",
   "dependencies": {

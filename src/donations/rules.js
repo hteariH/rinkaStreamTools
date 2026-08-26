@@ -1,4 +1,4 @@
-// Пороги для скримера и алертов.
+// Тиры донатов: во что попал донат по сумме и надо ли вообще на него реагировать.
 //
 // Курсы здесь не нужны: порог задан в той же валюте, в которой пришёл донат.
 // Если для валюты донатера порога нет, но источник пересчитал сумму сам
@@ -16,24 +16,51 @@ function lookup(minAmounts, currency) {
   return undefined;
 }
 
-/**
- * Сумма и валюта, с которыми имеет смысл сверяться с порогом.
- * @returns {{amount: number, currency: string, exact: boolean}}
- */
-export function comparableOf(donation, { minAmounts, baseCurrency }) {
-  if (lookup(minAmounts, donation.currency) !== undefined) {
-    return { amount: donation.amount, currency: donation.currency, exact: true };
-  }
-  if (donation.baseAmount !== null && donation.baseAmount !== undefined) {
-    return { amount: donation.baseAmount, currency: baseCurrency || "USD", exact: true };
-  }
-  return { amount: donation.amount, currency: DEFAULT_KEY, exact: false };
+/** Заданы ли пороги для этой валюты хоть в одном тире. */
+function anyThresholdFor(tiers, currency) {
+  return tiers.some((tier) => lookup(tier.minAmounts, currency) !== undefined);
 }
 
-/** Перекрывает ли донат порог. */
-export function passesThreshold(donation, { minAmounts, baseCurrency }) {
-  const comparable = comparableOf(donation, { minAmounts, baseCurrency });
-  const threshold = lookup(minAmounts, comparable.currency) ?? lookup(minAmounts, DEFAULT_KEY);
-  if (threshold === undefined || !Number.isFinite(threshold)) return false;
-  return comparable.amount >= threshold;
+/**
+ * Сумма и валюта, с которыми имеет смысл сверяться с порогом.
+ * @returns {{amount: number, currency: string}}
+ */
+export function comparableOf(donation, tiers, baseCurrency) {
+  if (anyThresholdFor(tiers, donation.currency)) {
+    return { amount: donation.amount, currency: donation.currency };
+  }
+  if (donation.baseAmount !== null && donation.baseAmount !== undefined) {
+    return { amount: donation.baseAmount, currency: baseCurrency || "USD" };
+  }
+  return { amount: donation.amount, currency: DEFAULT_KEY };
+}
+
+/**
+ * Тир доната — самый крупный из тех, чей порог сумма перекрывает. Тиры, выключенные
+ * для этой площадки, в расчёт не идут вовсе: иначе крупный донат с выключенной
+ * площадки «съедал» бы тир и не попадал в мелкий, который для неё включён.
+ *
+ * @param {object} donation
+ * @param {Array} tiers      секция alerts.tiers из конфига
+ * @param {string} baseCurrency
+ * @returns {{tier: object, threshold: number, comparable: object} | null}
+ */
+export function tierFor(donation, tiers, baseCurrency) {
+  const list = Array.isArray(tiers) ? tiers : [];
+  const comparable = comparableOf(donation, list, baseCurrency);
+
+  let best = null;
+  for (const tier of list) {
+    if (tier.sources && tier.sources[donation.source] === false) continue;
+
+    const threshold = lookup(tier.minAmounts, comparable.currency)
+      ?? lookup(tier.minAmounts, DEFAULT_KEY);
+    if (threshold === undefined || !Number.isFinite(threshold)) continue;
+    if (comparable.amount < threshold) continue;
+
+    if (best === null || threshold > best.threshold) {
+      best = { tier, threshold, comparable };
+    }
+  }
+  return best;
 }

@@ -60,7 +60,7 @@ function patchConfig(patch, immediate = false) {
 function mergeDeep(base, patch) {
   const out = { ...base };
   for (const [key, value] of Object.entries(patch)) {
-    if (value && typeof value === "object" && !Array.isArray(value) && key !== "minAmounts") {
+    if (value && typeof value === "object" && !Array.isArray(value)) {
       out[key] = mergeDeep(base[key] || {}, value);
     } else {
       out[key] = value;
@@ -130,12 +130,6 @@ bind("s-base", "screamer.baseCurrency");
 // Секунды в панели удобнее, а конфиг и оверлеи считают в миллисекундах.
 el("g-poll").addEventListener("input", (e) => {
   patchConfig({ goal: { pollIntervalMs: Math.max(10, Number(e.target.value) || 60) * 1000 } });
-});
-el("a-duration").addEventListener("input", (e) => {
-  patchConfig({ alerts: { durationMs: Math.max(1, Number(e.target.value) || 7) * 1000 } });
-});
-el("a-min").addEventListener("input", (e) => {
-  patchConfig({ alerts: { minAmount: Number(e.target.value) || 0 } });
 });
 el("s-duration").addEventListener("input", (e) => {
   patchConfig({ screamer: { durationMs: Math.max(1, Number(e.target.value) || 5) * 1000 } });
@@ -222,33 +216,73 @@ el("g-refresh").addEventListener("click", () => send({ type: "goal.refresh" }));
 
 /* ------------------------------------------------------------- скримеры */
 
-el("s-add-threshold").addEventListener("click", () => {
-  const code = el("s-new-currency").value.trim().toUpperCase();
-  const amount = Number(el("s-new-amount").value);
-  if (!code || !Number.isFinite(amount)) {
-    toast("Нужны код валюты и сумма", "warn");
+/* ----------------------------------------------------------------- тиры */
+
+/**
+ * Правки тиров уходят целым массивом: сервер заменяет его как есть, иначе удалить
+ * валюту или тир было бы нечем.
+ */
+function patchTiers(mutate, immediate = true) {
+  const tiers = JSON.parse(JSON.stringify(state.config.alerts.tiers));
+  mutate(tiers);
+  patchConfig({ alerts: { tiers } }, immediate);
+}
+
+el("a-tiers").addEventListener("input", (event) => {
+  const input = event.target;
+  const index = Number(input.closest("[data-index]")?.dataset.index);
+  if (!Number.isInteger(index)) return;
+
+  if (input.dataset.code) {
+    patchTiers((tiers) => { tiers[index].minAmounts[input.dataset.code] = Number(input.value) || 0; }, false);
     return;
   }
-  const minAmounts = { ...state.config.screamer.minAmounts, [code]: amount };
-  patchConfig({ screamer: { minAmounts } }, true);
-  el("s-new-currency").value = "";
-  el("s-new-amount").value = "";
+  if (input.dataset.field === "name") {
+    patchTiers((tiers) => { tiers[index].name = input.value; }, false);
+    return;
+  }
+  if (input.dataset.field === "duration") {
+    patchTiers((tiers) => { tiers[index].durationMs = Math.max(1, Number(input.value) || 5) * 1000; }, false);
+  }
 });
 
-el("s-thresholds").addEventListener("input", (event) => {
-  const input = event.target.closest("input");
-  if (!input) return;
-  const minAmounts = { ...state.config.screamer.minAmounts };
-  minAmounts[input.dataset.code] = Number(input.value) || 0;
-  patchConfig({ screamer: { minAmounts } });
+el("a-tiers").addEventListener("change", (event) => {
+  const input = event.target;
+  const index = Number(input.closest("[data-index]")?.dataset.index);
+  if (!Number.isInteger(index) || input.type !== "checkbox") return;
+
+  const field = input.dataset.field || "";
+  if (field === "screamer") {
+    patchTiers((tiers) => { tiers[index].screamer = input.checked; });
+  } else if (field.startsWith("src:")) {
+    const source = field.slice(4);
+    patchTiers((tiers) => {
+      tiers[index].sources = { ...tiers[index].sources, [source]: input.checked };
+    });
+  }
 });
 
-el("s-thresholds").addEventListener("click", (event) => {
-  const button = event.target.closest(".drop");
+el("a-tiers").addEventListener("click", (event) => {
+  const button = event.target.closest("button");
   if (!button) return;
-  const minAmounts = { ...state.config.screamer.minAmounts };
-  delete minAmounts[button.dataset.code];
-  patchConfig({ screamer: { minAmounts } }, true);
+  const index = Number(button.closest("[data-index]")?.dataset.index);
+  if (!Number.isInteger(index)) return;
+
+  if (button.classList.contains("drop")) {
+    patchTiers((tiers) => { delete tiers[index].minAmounts[button.dataset.code]; });
+    return;
+  }
+
+  if (button.classList.contains("add")) {
+    const box = button.closest(".tier__add");
+    const code = box.querySelector(".new-code").value.trim().toUpperCase();
+    const amount = Number(box.querySelector(".new-amount").value);
+    if (!code || !Number.isFinite(amount)) {
+      toast("Нужны код валюты и сумма", "warn");
+      return;
+    }
+    patchTiers((tiers) => { tiers[index].minAmounts[code] = amount; });
+  }
 });
 
 /* ------------------------------------------------------------- проверка */
@@ -361,8 +395,6 @@ function renderConfig(config) {
   setValue(el("dt-rate"), config.donatello.rate);
 
   setChecked(el("a-enabled"), config.alerts.enabled);
-  setValue(el("a-duration"), config.alerts.durationMs / 1000);
-  setValue(el("a-min"), config.alerts.minAmount);
 
   setChecked(el("s-enabled"), config.screamer.enabled);
   setValue(el("s-duration"), config.screamer.durationMs / 1000);
@@ -372,29 +404,78 @@ function renderConfig(config) {
 
   if (!el("t-currency").value) el("t-currency").value = config.goal.currency;
 
-  renderThresholds(config.screamer.minAmounts);
+  renderTiers(config.alerts.tiers);
 }
 
-function renderThresholds(minAmounts) {
-  // Перерисовываем только когда набор валют изменился: иначе поле, в котором
-  // печатают порог, теряло бы курсор на каждом ответе сервера.
-  const codes = Object.keys(minAmounts).join(",");
-  if (el("s-thresholds").dataset.codes === codes) {
-    for (const input of el("s-thresholds").querySelectorAll("input")) {
-      setValue(input, minAmounts[input.dataset.code]);
-    }
-    return;
+const SOURCE_FIELDS = [
+  ["donationAlerts", "DonationAlerts"],
+  ["donatello", "Donatello"],
+];
+
+function renderTiers(tiers) {
+  const box = el("a-tiers");
+  // Разметку пересобираем только когда изменился состав тиров или валют в них:
+  // иначе поле, в котором печатают порог, теряло бы курсор на каждом ответе сервера.
+  const shape = tiers.map((tier) => `${tier.id}:${Object.keys(tier.minAmounts).join(",")}`).join("|");
+
+  if (box.dataset.shape !== shape) {
+    box.dataset.shape = shape;
+    box.innerHTML = tiers.map(tierHtml).join("");
   }
-  el("s-thresholds").dataset.codes = codes;
-  el("s-thresholds").innerHTML = Object.entries(minAmounts)
-    .map(
-      ([code, amount]) => `<div class="threshold">
-        <span class="code">${escapeHtml(code)}</span>
-        <input type="number" step="0.01" min="0" value="${Number(amount)}" data-code="${escapeHtml(code)}" />
-        <button class="btn btn--ghost drop" data-code="${escapeHtml(code)}">убрать</button>
-      </div>`
-    )
-    .join("");
+
+  tiers.forEach((tier, index) => {
+    const node = box.querySelector(`[data-index="${index}"]`);
+    if (!node) return;
+    setValue(node.querySelector('[data-field="name"]'), tier.name);
+    setValue(node.querySelector('[data-field="duration"]'), tier.durationMs / 1000);
+    setChecked(node.querySelector('[data-field="screamer"]'), tier.screamer);
+    for (const [key] of SOURCE_FIELDS) {
+      setChecked(node.querySelector(`[data-field="src:${key}"]`), tier.sources?.[key] !== false);
+    }
+    for (const input of node.querySelectorAll("input[data-code]")) {
+      setValue(input, tier.minAmounts[input.dataset.code]);
+    }
+  });
+}
+
+function tierHtml(tier, index) {
+  const toggles = SOURCE_FIELDS.map(
+    ([key, label]) => `<label class="switch switch--sm">
+      <input type="checkbox" data-field="src:${key}" />
+      <span>${label}</span>
+    </label>`
+  ).join("");
+
+  const thresholds = Object.keys(tier.minAmounts).map(
+    (code) => `<div class="threshold">
+      <span class="code">${escapeHtml(code)}</span>
+      <input type="number" step="0.01" min="0" data-code="${escapeHtml(code)}" />
+      <button class="btn btn--ghost drop" data-code="${escapeHtml(code)}">убрать</button>
+    </div>`
+  ).join("");
+
+  return `<div class="tier" data-index="${index}">
+    <div class="tier__head">
+      <input type="text" class="tier__name" data-field="name" />
+      <label class="tier__dur">
+        <span>сек</span>
+        <input type="number" step="0.5" min="1" data-field="duration" />
+      </label>
+    </div>
+    <div class="tier__toggles">
+      ${toggles}
+      <label class="switch switch--sm switch--scream">
+        <input type="checkbox" data-field="screamer" />
+        <span>Скример</span>
+      </label>
+    </div>
+    <div class="tier__thresholds">${thresholds}</div>
+    <div class="actions tier__add">
+      <input type="text" class="inline-input inline-input--short new-code" placeholder="код" />
+      <input type="number" class="inline-input inline-input--short new-amount" placeholder="сумма" />
+      <button class="btn btn--ghost add">Добавить валюту</button>
+    </div>
+  </div>`;
 }
 
 function renderUrls(port) {

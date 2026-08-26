@@ -14,7 +14,7 @@ import { AxelChatClient } from "./raffle/axelchat.js";
 import { DonationAlertsSource } from "./donations/donationalerts.js";
 import { DonatelloSource } from "./donations/donatello.js";
 import { Goal } from "./donations/goal.js";
-import { passesThreshold } from "./donations/rules.js";
+import { tierFor } from "./donations/rules.js";
 
 export class App {
   constructor(config) {
@@ -122,19 +122,35 @@ export class App {
     // иначе цифра на экране догоняла бы донат до минуты.
     if (!donation.test) this.refreshGoalSoon();
 
-    if (this.config.alerts.enabled && donation.amount >= (Number(this.config.alerts.minAmount) || 0)) {
-      this.hub.broadcast("/ws/alerts", {
-        ...donation,
-        type: "alert",
-        durationMs: Number(this.config.alerts.durationMs) || 7000,
-      });
+    if (!this.config.alerts.enabled) return;
+
+    const match = tierFor(donation, this.config.alerts.tiers, this.config.screamer.baseCurrency);
+    if (!match) {
+      log.info(donation.source, "тир не подошёл — ни алерта, ни скримера");
+      return;
     }
 
-    if (this.config.screamer.enabled && passesThreshold(donation, this.config.screamer)) {
+    const { tier, threshold, comparable } = match;
+    log.info(
+      donation.source,
+      `тир «${tier.name}» (${comparable.amount} ${comparable.currency} ≥ ${threshold})`
+    );
+
+    this.hub.broadcast("/ws/alerts", {
+      ...donation,
+      type: "alert",
+      tier: tier.id,
+      tierName: tier.name,
+      durationMs: Number(tier.durationMs) || 7000,
+    });
+
+    // Скример — свойство тира: на мелкие донаты он обычно не нужен, а на крупные
+    // страница сама подберёт вариацию посильнее по имени тира.
+    if (tier.screamer && this.config.screamer.enabled) {
       this.hub.broadcast("/ws/screamer", {
         ...donation,
         type: "screamer",
-        tier: "full",
+        tier: tier.id,
         durationMs: Number(this.config.screamer.durationMs) || 5000,
         variant: donation.variant || undefined,
       });
@@ -146,9 +162,9 @@ export class App {
    * иначе каждый запуск оверлея писал бы 404 в консоль браузера и в лог OBS.
    */
   alertsHello() {
+    // Длительность теперь у каждого тира своя и едет вместе с самим алертом.
     return {
       type: "hello",
-      durationMs: this.config.alerts.durationMs,
       sound: existsSync(path.join(PUBLIC_DIR, "alert.mp3")),
     };
   }
@@ -325,11 +341,12 @@ export class App {
   }
 }
 
-// minAmounts заменяется целиком: иначе удалить валюту из панели было бы нельзя.
+// Массивы (тиры алертов) заменяются целиком: иначе удалить тир или валюту
+// из панели было бы нельзя.
 function mergeDeep(base, patch) {
   const out = { ...base };
   for (const [key, value] of Object.entries(patch)) {
-    if (value && typeof value === "object" && !Array.isArray(value) && key !== "minAmounts") {
+    if (value && typeof value === "object" && !Array.isArray(value)) {
       out[key] = mergeDeep(base[key] || {}, value);
     } else {
       out[key] = value;

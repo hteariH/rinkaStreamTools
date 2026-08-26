@@ -184,25 +184,20 @@
           </p>
         </div>
 
-        <div class="card">
+        <div class="card card--wide">
           <h2>Алерты донатов</h2>
           <label class="switch">
             <input type="checkbox" id="a-enabled" />
             <span>Показывать алерты</span>
           </label>
-          <div class="field-row">
-            <label class="field">
-              <span>Держать на экране, сек</span>
-              <input type="number" id="a-duration" step="0.5" min="1" />
-            </label>
-            <label class="field">
-              <span>Минимальная сумма</span>
-              <input type="number" id="a-min" step="0.01" min="0" />
-            </label>
-          </div>
           <p class="note">
-            Звук: положи файл <code>public/alert.mp3</code> — он заиграет вместе с алертом.
+            Донат попадает в самый крупный тир, чей порог он перекрывает. Тир, выключенный
+            для площадки, в расчёт не идёт вовсе — донат с неё уйдёт в тир пониже, который
+            для этой площадки включён, или не покажется совсем.
+            Пороги сравниваются с суммой в той же валюте — курсы не применяются;
+            <code>default</code> — для валют, которых нет в списке.
           </p>
+          <div class="tiers" id="a-tiers"></div>
         </div>
 
         <div class="card">
@@ -211,6 +206,10 @@
             <input type="checkbox" id="s-enabled" />
             <span>Включить скримеры</span>
           </label>
+          <p class="note">
+            Какие тиры вызывают скример — отмечается у самих тиров слева.
+            Здесь только то, как он выглядит.
+          </p>
           <div class="field-row">
             <label class="field">
               <span>Длительность, сек</span>
@@ -225,18 +224,10 @@
             <span>Перекрытие игры: <b id="s-opacity-view">0.75</b></span>
             <input type="range" id="s-opacity" min="0.1" max="1" step="0.05" />
           </label>
-
-          <h3>Пороги по валютам</h3>
           <p class="note">
-            Порог сравнивается с суммой в той же валюте — курсы не применяются.
-            <code>default</code> — для валют, которых нет в списке.
+            Базовая валюта нужна для донатов в валюте, порога для которой в тирах нет:
+            DonationAlerts присылает пересчитанную сумму, с ней и сверяемся.
           </p>
-          <div class="thresholds" id="s-thresholds"></div>
-          <div class="actions">
-            <input type="text" id="s-new-currency" class="inline-input inline-input--short" placeholder="код" />
-            <input type="number" id="s-new-amount" class="inline-input inline-input--short" placeholder="сумма" />
-            <button class="btn" id="s-add-threshold">Добавить валюту</button>
-          </div>
         </div>
 
         <div class="card">

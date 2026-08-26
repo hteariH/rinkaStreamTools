@@ -37,39 +37,58 @@ export const DEFAULTS = {
   },
   alerts: {
     enabled: true,
-    durationMs: 7000,
-    minAmount: 0,
+    // Тиры: во что попадает донат по сумме. Каждый включается отдельно для каждой
+    // площадки — например мелкие донаты с Donatello показывать, а с DonationAlerts
+    // нет, если там свои алерты уже настроены.
+    //
+    // Пороги задаются прямо в валютах, без курсов: донат сравнивается с порогом той
+    // же валюты, в которой пришёл. "default" — для валют, которых в списке нет.
+    tiers: [
+      {
+        id: "small",
+        name: "Мелкий",
+        durationMs: 5000,
+        // Вылетает ли на этот тир скример.
+        screamer: false,
+        sources: { donationAlerts: true, donatello: true },
+        minAmounts: { USD: 1, USDT: 1, EUR: 1, UAH: 40, RUB: 100, KZT: 500, BYN: 3, default: 1 },
+      },
+      {
+        id: "medium",
+        name: "Средний",
+        durationMs: 7000,
+        screamer: true,
+        sources: { donationAlerts: true, donatello: true },
+        minAmounts: { USD: 5, USDT: 5, EUR: 5, UAH: 200, RUB: 450, KZT: 2500, BYN: 15, default: 5 },
+      },
+      {
+        id: "big",
+        name: "Крупный",
+        durationMs: 9000,
+        screamer: true,
+        sources: { donationAlerts: true, donatello: true },
+        minAmounts: { USD: 20, USDT: 20, EUR: 20, UAH: 800, RUB: 1800, KZT: 10000, BYN: 60, default: 20 },
+      },
+    ],
   },
   screamer: {
     enabled: true,
-    durationMs: 5000,
+    // Насколько скример перекрывает игру.
     opacity: 0.75,
+    durationMs: 5000,
     // Валюта, в которую DonationAlerts пересчитывает донат сам. Нужна только для
-    // валют, порога для которых ниже нет.
+    // валют, порогов для которых в тирах нет.
     baseCurrency: "USD",
-    // Пороги задаются прямо в валютах, без курсов: донат сравнивается с порогом
-    // той же валюты, в которой пришёл. "default" — для всего остального.
-    minAmounts: {
-      USD: 3,
-      USDT: 3,
-      EUR: 3,
-      UAH: 100,
-      RUB: 250,
-      KZT: 1300,
-      BYN: 8,
-      default: 4,
-    },
   },
 };
 
-// Мерж на два уровня: верхний ключ (raffle, goal, …) и его поля. Глубже вложенности
-// в конфиге нет, кроме screamer.minAmounts — его заменяем целиком, потому что
-// удаление валюты из панели иначе было бы невозможно.
+// Мерж по вложенным объектам. Массивы (тиры алертов) заменяются целиком: иначе
+// удалить тир или валюту из панели было бы невозможно.
 function merge(defaults, patch) {
   const out = { ...defaults };
   for (const [key, value] of Object.entries(patch || {})) {
     if (value && typeof value === "object" && !Array.isArray(value) && defaults[key] && typeof defaults[key] === "object") {
-      out[key] = key === "minAmounts" ? { ...value } : merge(defaults[key], value);
+      out[key] = merge(defaults[key], value);
     } else if (value !== undefined) {
       out[key] = value;
     }

@@ -40,6 +40,36 @@
       text-transform: uppercase; opacity: .45;
     }
 
+    /* Тир виден с первого кадра: чем крупнее донат, тем заметнее карточка.
+       Размеры и рамка, а не только цвет — на цветном фоне игры цвет теряется. */
+    .alert--small { padding: 16px 26px; border: 1px solid rgba(255, 255, 255, .14); }
+    .alert--small .headline { font-size: clamp(20px, 2.4vw, 30px); }
+
+    .alert--medium {
+      border: 2px solid rgba(255, 213, 74, .55);
+      box-shadow: 0 10px 40px rgba(0, 0, 0, .55), 0 0 30px rgba(255, 200, 70, .25);
+    }
+
+    .alert--big {
+      padding: 30px 46px;
+      border: 2px solid rgba(124, 252, 124, .7);
+      box-shadow: 0 10px 46px rgba(0, 0, 0, .6), 0 0 46px rgba(124, 252, 124, .35);
+    }
+    .alert--big .headline { font-size: clamp(30px, 4.2vw, 56px); }
+    .alert--big .amount { animation: pop 1.1s ease-out; }
+    @keyframes pop {
+      0%   { transform: scale(1); }
+      30%  { transform: scale(1.18); }
+      100% { transform: scale(1); }
+    }
+    /* inline-block, иначе scale не действует на строчный элемент. */
+    .amount { display: inline-block; }
+
+    .tier {
+      margin-top: 8px; font-size: 12px; letter-spacing: .18em;
+      text-transform: uppercase; opacity: .5;
+    }
+
     @keyframes in {
       from { opacity: 0; transform: translateY(28px) scale(.9); }
       to   { opacity: 1; transform: translateY(0) scale(1); }
@@ -100,7 +130,7 @@
     const SOURCES = { donationAlerts: "DonationAlerts", donatello: "Donatello" };
 
     function show(data) {
-      const card = node("div", "alert");
+      const card = node("div", `alert alert--${data.tier || "small"}`);
 
       const headline = node("div", "headline");
       headline.appendChild(node("span", "donor", data.donorName || "Аноним"));
@@ -109,7 +139,10 @@
       card.appendChild(headline);
 
       if (data.message) card.appendChild(node("div", "message", data.message));
-      card.appendChild(node("div", "source", SOURCES[data.source] || data.source || ""));
+
+      const source = SOURCES[data.source] || data.source || "";
+      card.appendChild(node("div", "source", source));
+      if (data.tierName) card.appendChild(node("div", "tier", data.tierName));
 
       stage.innerHTML = "";
       stage.appendChild(card);
@@ -155,10 +188,18 @@
     }
 
     if (params.has("demo")) {
-      queue.push({
-        type: "alert", source: "donationAlerts", donorName: "Тестовый зритель",
-        amount: 25, currency: "USD", message: "проверка оверлея", durationMs: 7000,
-      });
+      // Прогон всех тиров подряд — посмотреть, чем они отличаются на экране.
+      const demo = [
+        { tier: "small", tierName: "Мелкий", amount: 2, durationMs: 4000 },
+        { tier: "medium", tierName: "Средний", amount: 10, durationMs: 4000 },
+        { tier: "big", tierName: "Крупный", amount: 50, durationMs: 4000 },
+      ];
+      for (const item of demo) {
+        queue.push({
+          type: "alert", source: "donationAlerts", donorName: "Тестовый зритель",
+          currency: "USD", message: "проверка оверлея", ...item,
+        });
+      }
       playNext();
     } else {
       connect();

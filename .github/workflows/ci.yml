@@ -1,0 +1,41 @@
+name: Проверки
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  tests:
+    name: Тесты
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - run: npm ci
+      - run: npm test
+
+  desktop:
+    name: Сборка приложения
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      # Только проверяем, что окно собирается: артефакты выкладывает релиз.
+      - name: Кеш cargo
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cargo/registry
+            ~/.cargo/git
+            desktop/target
+          key: cargo-${{ runner.os }}-${{ hashFiles('desktop/Cargo.lock') }}
+          restore-keys: cargo-${{ runner.os }}-
+
+      - run: cargo build --release
+        working-directory: desktop

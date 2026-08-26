@@ -174,6 +174,29 @@ input[type="range"] { width: 100%; accent-color: var(--gold); }
   background: var(--card-2); border: 1px solid var(--line); border-radius: 11px;
 }
 
+/* Карточка тиров шире прочих: в ней три колонки настроек на тир. */
+.card--wide { grid-column: 1 / -1; }
+
+.tiers { display: grid; gap: 14px; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); }
+
+.tier {
+  padding: 14px; background: var(--card-2);
+  border: 1px solid var(--line); border-radius: 11px;
+}
+.tier__head { display: flex; gap: 10px; align-items: center; }
+.tier__name { flex: 1; font-weight: 700; }
+.tier__dur { display: flex; align-items: center; gap: 6px; font-size: 12px; color: var(--muted); }
+.tier__dur input { width: 74px; }
+
+.tier__toggles { display: flex; flex-direction: column; gap: 7px; margin: 12px 0; }
+.switch--sm { font-size: 13px; font-weight: 500; }
+.switch--sm input { width: 15px; height: 15px; }
+.switch--scream input { accent-color: var(--red); }
+.switch--scream { color: var(--red); }
+
+.tier__thresholds { display: flex; flex-direction: column; gap: 6px; }
+.tier__add { margin-top: 10px; }
+
 .thresholds { display: flex; flex-direction: column; gap: 8px; }
 .threshold { display: flex; align-items: center; gap: 10px; }
 .threshold .code {
