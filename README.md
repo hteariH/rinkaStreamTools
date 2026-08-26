@@ -3,6 +3,10 @@
 [![Проверки](https://github.com/hteariH/rinkaStreamTools/actions/workflows/ci.yml/badge.svg)](https://github.com/hteariH/rinkaStreamTools/actions/workflows/ci.yml)
 [![Релиз](https://img.shields.io/github/v/release/hteariH/rinkaStreamTools)](https://github.com/hteariH/rinkaStreamTools/releases/latest)
 
+### [Скачать для Windows — rinkaStreamTools-win-x64.zip](https://github.com/hteariH/rinkaStreamTools/releases/latest/download/rinkaStreamTools-win-x64.zip)
+
+Распаковать и запустить `rinkaStreamTools.exe`. Ставить ничего не нужно.
+
 Набор оверлеев для стрима, который живёт целиком на твоём компьютере: розыгрыш по
 команде в чате, общая цель сбора из нескольких донат-площадок, алерты донатов и
 скримеры. Всё поднимается на одном локальном порту — в OBS добавляются обычные
@@ -28,9 +32,10 @@ Node, поэтому теперь это одна программа с одни
 
 ## Как запустить
 
-**Готовая папка — то, что отдаётся стримеру.** Скачай
-`rinkaStreamTools-win-x64.zip` со страницы
-[Releases](https://github.com/hteariH/rinkaStreamTools/releases/latest) и распакуй.
+**Готовая папка — то, что отдаётся стримеру.**
+[Скачай архив](https://github.com/hteariH/rinkaStreamTools/releases/latest/download/rinkaStreamTools-win-x64.zip)
+(ссылка всегда ведёт на последний релиз; все версии —
+[на странице релизов](https://github.com/hteariH/rinkaStreamTools/releases)) и распакуй.
 Внутри один файл для запуска:
 
 ```
