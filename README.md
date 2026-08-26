@@ -1,5 +1,8 @@
 # rinkaStreamTools
 
+[![Проверки](https://github.com/hteariH/rinkaStreamTools/actions/workflows/ci.yml/badge.svg)](https://github.com/hteariH/rinkaStreamTools/actions/workflows/ci.yml)
+[![Релиз](https://img.shields.io/github/v/release/hteariH/rinkaStreamTools)](https://github.com/hteariH/rinkaStreamTools/releases/latest)
+
 Набор оверлеев для стрима, который живёт целиком на твоём компьютере: розыгрыш по
 команде в чате, общая цель сбора из нескольких донат-площадок, алерты донатов и
 скримеры. Всё поднимается на одном локальном порту — в OBS добавляются обычные
@@ -25,7 +28,10 @@ Node, поэтому теперь это одна программа с одни
 
 ## Как запустить
 
-**Готовая папка — то, что отдаётся стримеру.** Один файл для запуска:
+**Готовая папка — то, что отдаётся стримеру.** Скачай
+`rinkaStreamTools-win-x64.zip` со страницы
+[Releases](https://github.com/hteariH/rinkaStreamTools/releases/latest) и распакуй.
+Внутри один файл для запуска:
 
 ```
 rinkaStreamTools.exe     <- по нему щёлкать
@@ -36,7 +42,7 @@ server/                  <- сервер и медиа, трогать не на
 прячет окно в трей и ничего не роняет; закрыть совсем — из трея «Выход». Ставить
 Node или Rust на эту машину не нужно.
 
-Собирается папка так (Node 20+ и Rust на сборочной машине):
+Собрать самому (Node 20+ и Rust на сборочной машине):
 
 ```bash
 npm ci
