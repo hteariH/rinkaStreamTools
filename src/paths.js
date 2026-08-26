@@ -28,3 +28,5 @@ export const BASE_DIR = isSea()
 
 export const PUBLIC_DIR = path.join(BASE_DIR, "public");
 export const CONFIG_PATH = path.join(BASE_DIR, "config.json");
+// Таблица донатеров — данные, а не настройки, поэтому лежит отдельно от конфига.
+export const DONORS_PATH = path.join(BASE_DIR, "donors.json");

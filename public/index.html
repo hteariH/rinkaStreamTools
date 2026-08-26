@@ -144,7 +144,7 @@
             </label>
           </div>
           <label class="field">
-            <span>Тема оверлея цели</span>
+            <span>Тема оверлеев цели и топа</span>
             <select id="g-theme">
               <option value="default">default — панель и золотая полоса</option>
               <option value="slim">slim — тонкая полоска без панели</option>
@@ -190,6 +190,39 @@
           <p class="note">
             Обе площадки читаются через страницу виджета — ту же ссылку, что вставляется
             в OBS. Логин и пароль не нужны и нигде не хранятся.
+          </p>
+        </div>
+
+        <div class="card">
+          <h2>Топ донатеров</h2>
+          <ol class="top-list" id="top-list"></ol>
+          <p class="note" id="top-note"></p>
+
+          <div class="field-row">
+            <label class="field">
+              <span>Подпись на оверлее</span>
+              <input type="text" id="top-title" placeholder="Топ донатеров" />
+            </label>
+            <label class="field">
+              <span>Сколько мест</span>
+              <input type="number" id="top-limit" step="1" min="1" max="20" />
+            </label>
+          </div>
+
+          <div class="actions">
+            <button class="btn btn--danger" id="top-reset">Очистить таблицу</button>
+          </div>
+
+          <p class="note">
+            Вид оверлея берётся у цели сбора — тема задаётся там, одна на оба списка.
+          </p>
+          <p class="note">
+            Донаты с обеих площадок складываются по имени: один и тот же ник на
+            DonationAlerts и на Donatello считается одним человеком. Общего id у зрителя
+            между площадками нет, так что имя — единственное, за что можно зацепиться;
+            два разных человека с одинаковым ником сложатся в одного.
+            Суммы приводятся к валюте цели теми же множителями, что и сама цель.
+            Анонимные донаты в список не идут — приписывать их некому.
           </p>
         </div>
 

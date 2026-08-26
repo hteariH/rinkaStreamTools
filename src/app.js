@@ -6,7 +6,7 @@ import { existsSync } from "node:fs";
 import path from "node:path";
 
 import { Hub } from "./server.js";
-import { PUBLIC_DIR } from "./paths.js";
+import { PUBLIC_DIR, DONORS_PATH } from "./paths.js";
 import { log } from "./log.js";
 import { saveConfig } from "./config.js";
 import { Raffle } from "./raffle/raffle.js";
@@ -14,6 +14,7 @@ import { AxelChatClient } from "./raffle/axelchat.js";
 import { DonationAlertsSource } from "./donations/donationalerts.js";
 import { DonatelloSource } from "./donations/donatello.js";
 import { Goal } from "./donations/goal.js";
+import { Donors } from "./donations/donors.js";
 import { tierFor } from "./donations/rules.js";
 
 export class App {
@@ -42,11 +43,16 @@ export class App {
       (key, error) => log.warn(key, `сумма не обновилась: ${error.message}`)
     );
 
+    // Множитель площадки к валюте цели тот же, что у самой цели: иначе гривны с
+    // одной площадки и доллары с другой сложились бы в бессмыслицу.
+    this.donors = new Donors(DONORS_PATH, (source) => this.config[source]?.rate ?? 1);
+
     this.hub = new Hub(
       config.port,
       {
         "/ws/raffle": () => this.raffle.snapshot(),
         "/ws/goal": () => this.goal.snapshot(),
+        "/ws/top": () => this.topSnapshot(),
         // Алерты и скримеры — поток событий, начального состояния у них нет:
         // оверлей, подключившийся после доната, показывать его задним числом не должен.
         "/ws/alerts": () => this.alertsHello(),
@@ -60,6 +66,7 @@ export class App {
   }
 
   async start() {
+    await this.donors.load();
     await this.hub.start();
 
     this._wireAxelChat();
@@ -121,7 +128,11 @@ export class App {
     // Сумму площадки не досчитываем сами, а спрашиваем у неё: в сокет прилетает
     // не всегда ровно то, что площадка потом покажет в цели. Опрос внеочередной,
     // иначе цифра на экране догоняла бы донат до минуты.
-    if (!donation.test) this.refreshGoalSoon();
+    if (!donation.test) {
+      this.refreshGoalSoon();
+      this.donors.add(donation);
+      this.pushTop();
+    }
 
     if (!this.config.alerts.enabled) return;
 
@@ -236,6 +247,19 @@ export class App {
     this.pushControl();
   }
 
+  pushTop() {
+    this.hub.broadcast("/ws/top", this.topSnapshot());
+    this.pushControl();
+  }
+
+  topSnapshot() {
+    return this.donors.snapshot(
+      this.config.top,
+      this.config.goal.currency || "USD",
+      this.config.goal.theme || "default"
+    );
+  }
+
   pushControl() {
     this.hub.broadcast("/ws/control", this.controlState());
   }
@@ -246,6 +270,7 @@ export class App {
       config: this.config,
       raffle: { ...this.raffle.snapshot(), participants: this.raffle.entries() },
       goal: this.goal.snapshot(),
+      top: this.topSnapshot(),
       status: {
         axelchat: this.axelchatStatus,
         donationAlerts: this.donationAlerts.enabled ? this.donationAlerts.status : "off",
@@ -294,6 +319,11 @@ export class App {
         return;
       case "raffle.timer":
         this.handleTimer(message, reply);
+        return;
+      case "top.reset":
+        this.donors.reset();
+        log.info("top", "таблица донатеров очищена");
+        this.pushTop();
         return;
       case "goal.refresh":
         this.goal.poll().then(() => {
@@ -395,6 +425,7 @@ export class App {
     this.pushRaffle();
     this.pushGoal();
     this.hub.broadcast("/ws/alerts", this.alertsHello());
+    this.pushTop();
     this.hub.broadcast("/ws/screamer", { type: "hello", opacity: next.screamer.opacity });
   }
 }

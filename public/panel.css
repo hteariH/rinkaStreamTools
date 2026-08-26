@@ -169,6 +169,25 @@ input[type="range"] { width: 100%; accent-color: var(--gold); }
 .breakdown div { display: flex; justify-content: space-between; font-size: 13px; color: var(--muted); }
 .breakdown b { color: var(--text); font-variant-numeric: tabular-nums; }
 
+.top-list {
+  list-style: none; counter-reset: place; margin-top: 4px;
+  display: flex; flex-direction: column; gap: 6px;
+}
+.top-list:empty { display: none; }
+.top-list li {
+  counter-increment: place;
+  display: flex; align-items: baseline; gap: 10px;
+  padding: 8px 12px; background: var(--card-2);
+  border: 1px solid var(--line); border-radius: 9px;
+}
+.top-list li::before {
+  content: counter(place) ".";
+  flex: 0 0 auto; min-width: 1.4em; color: var(--muted); font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+.top-list li:first-child::before { color: var(--gold); }
+.top-list b { margin-left: auto; color: var(--green); font-variant-numeric: tabular-nums; }
+
 .source {
   padding: 14px; margin-bottom: 14px;
   background: var(--card-2); border: 1px solid var(--line); border-radius: 11px;

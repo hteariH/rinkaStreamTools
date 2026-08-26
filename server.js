@@ -55,6 +55,7 @@ async function main() {
   console.log("  Источники для OBS (Browser Source):");
   console.log(`    розыгрыш          http://localhost:${config.port}/raffle`);
   console.log(`    цель сбора        http://localhost:${config.port}/goal`);
+  console.log(`    топ донатеров     http://localhost:${config.port}/top`);
   console.log(`    алерты донатов    http://localhost:${config.port}/alerts`);
   console.log(`    скримеры          http://localhost:${config.port}/screamer`);
   console.log("");

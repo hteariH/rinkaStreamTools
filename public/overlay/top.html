@@ -1,0 +1,248 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>rinkaStreamTools — топ донатеров</title>
+  <style>
+    /* ===== База: прозрачный фон для Browser Source в OBS ===== */
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    html, body {
+      background: transparent; height: 100%; overflow: hidden;
+      font-family: "Segoe UI", Roboto, system-ui, sans-serif; color: #fff;
+    }
+
+    #app { padding: 16px; }
+
+    /* Базовая раскладка одна на все темы, различаются только краски и оформа. */
+    .board {
+      display: inline-flex; flex-direction: column; gap: 10px; min-width: 380px;
+      padding: 18px 22px;
+    }
+
+    .title { font-size: 22px; font-weight: 800; }
+    .title:empty { display: none; }
+
+    .list { display: flex; flex-direction: column; gap: 7px; list-style: none; }
+
+    .row {
+      display: flex; align-items: baseline; gap: 14px;
+      font-size: 20px; line-height: 1.25;
+      /* Появление списком: строки въезжают по очереди, а не мигают разом. */
+      animation: slide .45s ease-out both;
+    }
+    .row .place {
+      flex: 0 0 auto; min-width: 1.4em; font-weight: 800;
+      font-variant-numeric: tabular-nums;
+    }
+    .row .name {
+      flex: 1; font-weight: 700; overflow: hidden;
+      text-overflow: ellipsis; white-space: nowrap;
+    }
+    .row .sum { flex: 0 0 auto; font-weight: 800; font-variant-numeric: tabular-nums; }
+
+    /* Первые места заметнее остальных, иначе список читается как простыня. */
+    .row--1 { font-size: 25px; }
+    .row--2 { font-size: 22px; }
+
+    @keyframes slide {
+      from { opacity: 0; transform: translateX(-14px); }
+      to   { opacity: 1; transform: translateX(0); }
+    }
+
+    .empty { font-size: 17px; opacity: .6; }
+
+    /* ============================================================
+       ТЕМА: default — тёмная панель, золото и зелёные суммы
+       ============================================================ */
+    #app[data-theme="default"] .board {
+      background: rgba(15, 15, 25, .72); border-radius: 18px;
+      backdrop-filter: blur(4px); box-shadow: 0 6px 24px rgba(0, 0, 0, .45);
+      text-shadow: 0 2px 6px rgba(0, 0, 0, .6);
+    }
+    #app[data-theme="default"] .title { color: #ffd54a; }
+    #app[data-theme="default"] .place { color: #8f95a8; }
+    #app[data-theme="default"] .sum { color: #7CFC7C; }
+    #app[data-theme="default"] .row--1 .place,
+    #app[data-theme="default"] .row--1 .name { color: #ffd54a; }
+    #app[data-theme="default"] .row--2 .place,
+    #app[data-theme="default"] .row--3 .place { color: #c9cede; }
+
+    /* ============================================================
+       ТЕМА: slim — только текст, без панели
+       ============================================================ */
+    #app[data-theme="slim"] .board { padding: 0; gap: 6px; }
+    #app[data-theme="slim"] .board,
+    #app[data-theme="slim"] .board * { text-shadow: 0 2px 8px #000; }
+    #app[data-theme="slim"] .title { font-size: 19px; }
+    #app[data-theme="slim"] .row { font-size: 18px; }
+    #app[data-theme="slim"] .row--1 { font-size: 21px; }
+    #app[data-theme="slim"] .row--2 { font-size: 19px; }
+    #app[data-theme="slim"] .place { color: rgba(255, 255, 255, .55); }
+    #app[data-theme="slim"] .sum { color: #7CFC7C; }
+
+    /* ============================================================
+       ТЕМА: neon — циан по обсидиану, рамка и скан-линии
+       ============================================================ */
+    #app[data-theme="neon"] .board {
+      position: relative; overflow: hidden;
+      background: rgba(4, 10, 16, .8);
+      border: 1px solid rgba(80, 230, 255, .5);
+      box-shadow: 0 0 22px rgba(0, 200, 255, .28), inset 0 0 22px rgba(0, 180, 255, .12);
+      font-family: "Consolas", monospace;
+    }
+    /* Скан-линии поверх всего, но кликов на оверлее нет — перехватывать нечего. */
+    #app[data-theme="neon"] .board::after {
+      content: ""; position: absolute; inset: 0;
+      background: repeating-linear-gradient(180deg, rgba(0, 0, 0, .3) 0 2px, transparent 2px 4px);
+    }
+    #app[data-theme="neon"] .title {
+      color: #8ff0ff; text-transform: uppercase; letter-spacing: .12em; font-size: 19px;
+      text-shadow: 0 0 12px rgba(80, 230, 255, .8);
+    }
+    #app[data-theme="neon"] .place { color: rgba(143, 240, 255, .55); }
+    #app[data-theme="neon"] .sum { color: #6ff0ff; text-shadow: 0 0 14px rgba(80, 230, 255, .9); }
+    #app[data-theme="neon"] .row--1 .name { color: #8ff0ff; }
+
+    /* ============================================================
+       ТЕМА: hud — циановая капсула, подпись по центру
+       ============================================================ */
+    #app[data-theme="hud"] .board {
+      background: rgba(8, 8, 10, .88); border-radius: 22px;
+      border: 1px solid rgba(255, 255, 255, .22);
+      box-shadow: 0 4px 18px rgba(0, 0, 0, .5);
+      font-family: "Consolas", monospace;
+    }
+    #app[data-theme="hud"] .title {
+      align-self: center; color: #fff; font-size: 18px;
+      letter-spacing: .3em; text-indent: .3em; text-transform: uppercase;
+      text-shadow: 0 2px 6px rgba(0, 0, 0, .9);
+    }
+    /* Строки — вложенные капсулы, как заливка в полосе цели. */
+    #app[data-theme="hud"] .row {
+      padding: 5px 14px; border-radius: 999px;
+      background: rgba(60, 220, 240, .08);
+    }
+    #app[data-theme="hud"] .row--1 { background: rgba(60, 220, 240, .18); }
+    #app[data-theme="hud"] .place { color: rgba(60, 220, 240, .6); }
+    #app[data-theme="hud"] .name { color: #fff; }
+    #app[data-theme="hud"] .sum {
+      color: #3cdcf0; text-shadow: 0 0 12px rgba(60, 220, 240, .6);
+    }
+
+    .offline {
+      position: fixed; bottom: 8px; right: 12px;
+      font-size: 12px; opacity: .5; display: none;
+    }
+    .offline.show { display: block; }
+  </style>
+</head>
+<body>
+  <div id="app" data-theme="default">
+    <div class="board">
+      <div class="title" id="title"></div>
+      <ul class="list" id="list"></ul>
+    </div>
+  </div>
+  <div class="offline" id="offline">нет связи</div>
+
+  <script>
+    /*
+     * Топ донатеров. Слушает /ws/top и перерисовывает список целиком.
+     *
+     * Вид берётся у оверлея цели: тема одна на оба списка, чтобы в сцене OBS они
+     * не выглядели из разных приложений.
+     *
+     * Отладка:
+     *   /top?demo        — показать пример, ничего не ожидая от сервера
+     *   /top?theme=neon  — перебить тему, не трогая настройки
+     */
+    const el = (id) => document.getElementById(id);
+    const app = el("app");
+    const THEMES = ["default", "slim", "neon", "hud"];
+
+    // Тему можно перебить прямо в адресе источника OBS: /top?theme=neon
+    const params = new URLSearchParams(location.search);
+    const forcedTheme = THEMES.includes(params.get("theme")) ? params.get("theme") : null;
+
+    function fmt(value) {
+      const number = Number(value) || 0;
+      return Number.isInteger(number) ? String(number) : number.toFixed(2);
+    }
+
+    let lastSignature = null;
+
+    function render(state) {
+      if (!state || state.type !== "top") return;
+
+      const theme = forcedTheme || (THEMES.includes(state.theme) ? state.theme : "default");
+      if (app.dataset.theme !== theme) app.dataset.theme = theme;
+
+      el("title").textContent = state.title || "";
+
+      // Перерисовываем только когда список реально изменился: иначе анимация
+      // въезда проигрывалась бы на каждом обновлении цели.
+      const signature = JSON.stringify(state.donors);
+      if (signature === lastSignature) return;
+      lastSignature = signature;
+
+      const list = el("list");
+      list.innerHTML = "";
+
+      if (!state.donors.length) {
+        const empty = document.createElement("li");
+        empty.className = "empty";
+        empty.textContent = "Пока никого";
+        list.appendChild(empty);
+        return;
+      }
+
+      state.donors.forEach((donor, index) => {
+        const row = document.createElement("li");
+        row.className = `row row--${donor.place}`;
+        row.style.animationDelay = `${index * 0.07}s`;
+
+        const place = document.createElement("span");
+        place.className = "place";
+        place.textContent = `${donor.place}.`;
+
+        const name = document.createElement("span");
+        name.className = "name";
+        name.innerText = donor.name;      // именно innerText: ник — чужой ввод
+
+        const sum = document.createElement("span");
+        sum.className = "sum";
+        sum.textContent = `${fmt(donor.total)} ${state.currency || ""}`.trim();
+
+        row.append(place, name, sum);
+        list.appendChild(row);
+      });
+    }
+
+    let ws;
+    function connect() {
+      const proto = location.protocol === "https:" ? "wss" : "ws";
+      ws = new WebSocket(`${proto}://${location.host}/ws/top`);
+      ws.onopen = () => el("offline").classList.remove("show");
+      ws.onmessage = (ev) => { try { render(JSON.parse(ev.data)); } catch {} };
+      ws.onclose = () => { el("offline").classList.add("show"); setTimeout(connect, 1500); };
+      ws.onerror = () => { try { ws.close(); } catch {} };
+    }
+
+    if (params.has("demo")) {
+      render({
+        type: "top", title: "Топ донатеров", currency: "USD", theme: params.get("theme"),
+        donors: [
+          { place: 1, name: "Аня", total: 120 },
+          { place: 2, name: "MaxPower", total: 75.5 },
+          { place: 3, name: "gg_wp", total: 40 },
+          { place: 4, name: "НочнойЗритель", total: 25 },
+          { place: 5, name: "Котик", total: 10 },
+        ],
+      });
+    } else {
+      connect();
+    }
+  </script>
+</body>
+</html>

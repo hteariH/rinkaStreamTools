@@ -117,6 +117,9 @@ bind("g-currency", "goal.currency");
 bind("g-offset", "goal.manualOffset", { type: "number" });
 bind("g-theme", "goal.theme");
 
+bind("top-title", "top.title");
+bind("top-limit", "top.limit", { type: "number" });
+
 bind("da-enabled", "donationAlerts.enabled", { type: "checkbox" });
 bind("da-url", "donationAlerts.widgetUrl");
 bind("da-rate", "donationAlerts.rate", { type: "number" });
@@ -214,6 +217,12 @@ function fmtTime(seconds) {
 /* ------------------------------------------------------------------ цель */
 
 el("g-refresh").addEventListener("click", () => send({ type: "goal.refresh" }));
+
+el("top-reset").addEventListener("click", () => {
+  if (confirm("Очистить таблицу донатеров? Суммы за эфир пропадут.")) {
+    send({ type: "top.reset" });
+  }
+});
 
 /* ------------------------------------------------------------- скримеры */
 
@@ -499,11 +508,41 @@ function tierHtml(tier, index) {
   </div>`;
 }
 
+function renderTop(top, config) {
+  setValue(el("top-title"), config.top.title);
+  setValue(el("top-limit"), config.top.limit);
+
+  el("top-list").innerHTML = top.donors.length
+    ? top.donors
+        .map(
+          (donor) => `<li>
+            <span class="who">${escapeHtml(donor.name)}</span>
+            <span class="svc">${donor.count}&nbsp;×</span>
+            <b>${fmtMoney(donor.total)} ${escapeHtml(top.currency)}</b>
+          </li>`
+        )
+        .join("")
+    : "";
+
+  const parts = [];
+  if (!top.donors.length) parts.push("Пока никого — донаты появятся здесь по мере эфира.");
+  if (top.totalDonors > top.donors.length) {
+    parts.push(`Всего донатеров: ${top.totalDonors}, в списке — ${top.donors.length}.`);
+  }
+  if (top.anonymous.count > 0) {
+    parts.push(
+      `Анонимных донатов: ${top.anonymous.count} на ${fmtMoney(top.anonymous.total)} ${top.currency}.`
+    );
+  }
+  el("top-note").textContent = parts.join(" ");
+}
+
 function renderUrls(port) {
   const base = `http://localhost:${port}`;
   const items = [
     ["Розыгрыш", "/raffle"],
     ["Цель сбора", "/goal"],
+    ["Топ донатеров", "/top"],
     ["Алерты донатов", "/alerts"],
     ["Скримеры", "/screamer"],
   ];
@@ -569,6 +608,7 @@ function render(next) {
   renderConfig(next.config);
   renderRaffle(next.raffle);
   renderGoal(next.goal, next.config);
+  renderTop(next.top, next.config);
   renderUrls(next.config.port);
   if (next.log) renderLog(next.log);
 }

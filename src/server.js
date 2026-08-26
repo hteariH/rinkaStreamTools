@@ -28,6 +28,7 @@ const ALIASES = {
   "/": "/index.html",
   "/raffle": "/overlay/raffle.html",
   "/goal": "/overlay/goal.html",
+  "/top": "/overlay/top.html",
   "/alerts": "/overlay/alert.html",
   "/screamer": "/overlay/screamer.html",
 };
