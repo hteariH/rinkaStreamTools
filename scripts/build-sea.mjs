@@ -71,6 +71,18 @@ if (existsSync(configSample)) {
   copyFileSync(configSample, path.join(dist, "config.example.json"));
 }
 
+// Оверлей поверх игры собирается своим тулчейном (cargo), поэтому здесь его не
+// собираем, а лишь подбираем готовый: без Rust на машине сборка бы просто падала.
+const overlayName = isWin ? "rinka-screamer-overlay.exe" : "rinka-screamer-overlay";
+const overlayBuilt = path.join(root, "desktop-overlay", "target", "release", overlayName);
+if (existsSync(overlayBuilt)) {
+  copyFileSync(overlayBuilt, path.join(dist, overlayName));
+  console.log("       + оверлей поверх игры");
+} else {
+  console.log("       оверлей поверх игры не собран — пропускаю");
+  console.log("       собрать: cd desktop-overlay && cargo build --release");
+}
+
 console.log("[6/6] Уборка промежуточных файлов...");
 for (const leftover of [bundle, blob, seaConfig]) {
   rmSync(leftover, { force: true });
