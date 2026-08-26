@@ -85,6 +85,15 @@
             <button class="btn" id="r-timer-stop">Убрать</button>
           </div>
 
+          <label class="switch mt-sm">
+            <input type="checkbox" id="r-autodraw" />
+            <span>Сразу опубликовать победителя</span>
+          </label>
+          <p class="note">
+            Как только отсчёт дойдёт до нуля, победитель разыграется сам и появится
+            на оверлее — не надо ловить момент и жать «Разыграть» в эфире.
+          </p>
+
           <h2 class="mt">Участники</h2>
           <div class="actions">
             <input type="text" id="r-add-name" class="inline-input" placeholder="добавить вручную" />
@@ -233,8 +242,11 @@
         <div class="card">
           <h2>Проверка</h2>
           <p class="note">
-            Прогоняет тестовый донат по всей цепочке: алерт и скример увидишь так же,
-            как на эфире. Общая сумма от теста не растёт.
+            С вариацией «по тиру» донат идёт по всей цепочке: алерт и скример увидишь
+            так же, как на эфире. Выбранная вручную вариация показывается сама по себе,
+            мимо тиров и порогов — в том числе <b>сердечко</b>, которым проверяют, что
+            оверлей жив и стоит где надо, не вздрагивая при этом.
+            Общая сумма от теста не растёт.
           </p>
           <div class="field-row">
             <label class="field">
@@ -257,7 +269,8 @@
           <label class="field">
             <span>Вариация скримера</span>
             <select id="t-variant">
-              <option value="">случайная</option>
+              <option value="">по тиру — как на эфире</option>
+              <option value="heart">сердечко — проверка, которая не пугает</option>
               <option value="lunge">lunge — бросок на камеру</option>
               <option value="flash">flash — подсечка</option>
               <option value="strobe">strobe — строб</option>

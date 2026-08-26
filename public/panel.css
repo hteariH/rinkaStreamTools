@@ -190,6 +190,7 @@ input[type="range"] { width: 100%; accent-color: var(--gold); }
 
 .tier__toggles { display: flex; flex-direction: column; gap: 7px; margin: 12px 0; }
 .switch--sm { font-size: 13px; font-weight: 500; }
+.mt-sm { margin-top: 16px; }
 .switch--sm input { width: 15px; height: 15px; }
 .switch--scream input { accent-color: var(--red); }
 .switch--scream { color: var(--red); }

@@ -28,6 +28,7 @@ export class App {
     this.axelchat = new AxelChatClient(config.raffle.axelchatUrl);
     this.axelchatStatus = "off";
     this.refreshTimer = null;
+    this.autoDrawTimer = null;
 
     this.donationAlerts = new DonationAlertsSource(config.donationAlerts);
     this.donatello = new DonatelloSource(config.donatello);
@@ -152,9 +153,24 @@ export class App {
         type: "screamer",
         tier: tier.id,
         durationMs: Number(this.config.screamer.durationMs) || 5000,
-        variant: donation.variant || undefined,
       });
     }
+  }
+
+  /**
+   * Показать конкретную вариацию скримера, не разбирая тиры. Нужно для проверки
+   * из панели: иначе «сердечко» с мелкой суммой не показало бы ничего, потому что
+   * мелкий тир скример не вызывает.
+   */
+  previewScreamer(donation, variant) {
+    this.hub.broadcast("/ws/screamer", {
+      ...donation,
+      type: "screamer",
+      tier: "check",
+      durationMs: Number(this.config.screamer.durationMs) || 5000,
+      variant,
+    });
+    log.info("screamer", `проверка: вариация «${variant}»`);
   }
 
   /**
@@ -179,6 +195,33 @@ export class App {
       this.refreshTimer = null;
       this.goal.poll().then(() => this.pushGoal());
     }, 2500);
+  }
+
+  /**
+   * Разыграть победителя по истечении обратного отсчёта, если это включено.
+   * Таймер до сих пор был чисто оформительским: сервер хранил момент окончания,
+   * а тикал его сам оверлей. Теперь на этот момент нужно ещё и среагировать.
+   */
+  scheduleAutoDraw() {
+    clearTimeout(this.autoDrawTimer);
+    this.autoDrawTimer = null;
+
+    if (!this.config.raffle.autoDrawOnTimer) return;
+    if (this.raffle.timerPaused()) return;
+
+    const left = this.raffle.timerRemaining();
+    if (left <= 0) return;
+
+    this.autoDrawTimer = setTimeout(() => {
+      this.autoDrawTimer = null;
+      const winner = this.raffle.draw();
+      if (!winner) {
+        log.warn("raffle", "отсчёт кончился, но разыгрывать некого");
+      } else {
+        log.ok("raffle", `отсчёт кончился, победитель: ${winner.name}`);
+      }
+      this.pushRaffle();
+    }, left * 1000);
   }
 
   // ------------------------------------------------------------- рассылка
@@ -233,6 +276,7 @@ export class App {
       case "raffle.restart":
         this.raffle.restart();
         log.info("raffle", "список очищен");
+        this.scheduleAutoDraw();
         this.pushRaffle();
         return;
       case "raffle.add": {
@@ -263,8 +307,8 @@ export class App {
           (error) => reply(`Не сохранилось: ${error.message}`, "warn")
         );
         return;
-      case "test.donation":
-        this.onDonation({
+      case "test.donation": {
+        const donation = {
           id: `test-${Date.now()}`,
           source: message.source === "donatello" ? "donatello" : "donationAlerts",
           donorName: message.name || null,
@@ -273,10 +317,22 @@ export class App {
           baseAmount: null,
           message: message.message || null,
           at: Date.now(),
-          variant: message.variant || undefined,
           test: true,
-        });
+        };
+
+        // Вариация выбрана руками — показываем её саму, мимо тиров и порогов.
+        if (message.variant) {
+          if (!this.config.screamer.enabled) {
+            reply("Скримеры выключены — включи их выше", "warn");
+            return;
+          }
+          this.previewScreamer(donation, message.variant);
+          return;
+        }
+
+        this.onDonation(donation);
         return;
+      }
       default:
         reply(`Неизвестная команда: ${message.type}`, "warn");
     }
@@ -304,6 +360,7 @@ export class App {
       default:
         return;
     }
+    this.scheduleAutoDraw();
     this.pushRaffle();
   }
 
@@ -324,6 +381,7 @@ export class App {
     }
     this.raffle.setCommand(next.raffle.command);
     this.raffle.setTheme(next.raffle.theme);
+    this.scheduleAutoDraw();
 
     this.donationAlerts.configure(next.donationAlerts);
     this.donatello.configure(next.donatello);

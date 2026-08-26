@@ -109,6 +109,7 @@ function bind(id, path, { type = "text", immediate = false } = {}) {
 bind("r-command", "raffle.command");
 bind("r-theme", "raffle.theme");
 bind("r-axelchat", "raffle.axelchatUrl");
+bind("r-autodraw", "raffle.autoDrawOnTimer", { type: "checkbox" });
 
 bind("g-title", "goal.title");
 bind("g-target", "goal.target", { type: "number" });
@@ -218,14 +219,33 @@ el("g-refresh").addEventListener("click", () => send({ type: "goal.refresh" }));
 
 /* ----------------------------------------------------------------- тиры */
 
-/**
+/*
  * Правки тиров уходят целым массивом: сервер заменяет его как есть, иначе удалить
  * валюту или тир было бы нечем.
+ *
+ * Из-за этого нельзя клонировать тиры из state на каждую правку: настройка тиров —
+ * это серия кликов подряд, а state обновляется только когда сервер пришлёт ответ.
+ * Два клика внутри одного ответа клонировали бы одно и то же, и второй затирал бы
+ * первый. Поэтому правки копятся в своей копии, а state для них — лишь стартовое
+ * значение; копия отпускается, когда сервер вернёт ровно её.
  */
+let editedTiers = null;
+
 function patchTiers(mutate, immediate = true) {
-  const tiers = JSON.parse(JSON.stringify(state.config.alerts.tiers));
+  const tiers = structuredClone(editedTiers ?? state.config.alerts.tiers);
   mutate(tiers);
+  editedTiers = tiers;
   patchConfig({ alerts: { tiers } }, immediate);
+}
+
+/** Тиры, которые надо показывать: своя копия, пока сервер не подтвердит её. */
+function currentTiers(fromServer) {
+  if (editedTiers === null) return fromServer;
+  if (JSON.stringify(editedTiers) === JSON.stringify(fromServer)) {
+    editedTiers = null;
+    return fromServer;
+  }
+  return editedTiers;
 }
 
 el("a-tiers").addEventListener("input", (event) => {
@@ -386,6 +406,7 @@ function renderGoal(goal, config) {
 function renderConfig(config) {
   setValue(el("r-theme"), config.raffle.theme);
   setValue(el("r-axelchat"), config.raffle.axelchatUrl);
+  setChecked(el("r-autodraw"), config.raffle.autoDrawOnTimer);
 
   setChecked(el("da-enabled"), config.donationAlerts.enabled);
   setValue(el("da-url"), config.donationAlerts.widgetUrl);
@@ -404,7 +425,7 @@ function renderConfig(config) {
 
   if (!el("t-currency").value) el("t-currency").value = config.goal.currency;
 
-  renderTiers(config.alerts.tiers);
+  renderTiers(currentTiers(config.alerts.tiers));
 }
 
 const SOURCE_FIELDS = [

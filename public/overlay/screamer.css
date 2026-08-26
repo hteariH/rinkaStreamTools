@@ -221,6 +221,85 @@ body {
     animation: creep 4s ease-in both;
 }
 
+/* ------------------------------------------------------------ проверка */
+
+/* Сердечко — не эффект, а проверка связки, поэтому здесь ничего не трясётся
+   и не мигает: видно, что оверлей жив и стоит где надо, и только. */
+.variant--heart {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: radial-gradient(circle at 50% 45%, rgba(255, 120, 170, 0.28), rgba(0, 0, 0, 0.55) 70%);
+}
+
+.heart-glow {
+    position: absolute;
+    width: 60vmin;
+    height: 60vmin;
+    border-radius: 50%;
+    background: radial-gradient(circle, rgba(255, 130, 180, 0.45), transparent 65%);
+    animation: heart-breathe 1.8s ease-in-out infinite;
+}
+
+.heart {
+    position: relative;
+    width: 34vmin;
+    z-index: 2;
+    animation: heart-beat 1.2s ease-in-out infinite;
+}
+
+.heart svg,
+.heart-spark svg {
+    width: 100%;
+    height: auto;
+    display: block;
+    fill: #ff5d8f;
+    filter: drop-shadow(0 0 24px rgba(255, 90, 140, 0.85));
+}
+
+/* Мелкие сердечки летят вверх: заодно видно, что анимации не встали. */
+.heart-spark {
+    position: absolute;
+    bottom: -12vmin;
+    width: var(--size, 20px);
+    opacity: 0;
+    z-index: 1;
+    animation: heart-float linear infinite;
+}
+
+.heart-spark svg {
+    fill: rgba(255, 140, 180, 0.9);
+    filter: drop-shadow(0 0 10px rgba(255, 90, 140, 0.7));
+}
+
+@keyframes heart-beat {
+    0%, 100% { transform: scale(1); }
+    14% { transform: scale(1.12); }
+    28% { transform: scale(1); }
+    42% { transform: scale(1.08); }
+}
+
+@keyframes heart-breathe {
+    0%, 100% { transform: scale(1); opacity: 0.75; }
+    50% { transform: scale(1.15); opacity: 1; }
+}
+
+@keyframes heart-float {
+    0% { transform: translateY(0) rotate(-8deg); opacity: 0; }
+    12% { opacity: 1; }
+    80% { opacity: 1; }
+    100% { transform: translateY(-115vh) rotate(10deg); opacity: 0; }
+}
+
+/* Подпись у проверки спокойная: красная тень из общего стиля тут ни к чему. */
+.caption--check {
+    text-shadow: 0 0 16px rgba(255, 120, 170, 0.9), 0 2px 8px rgba(0, 0, 0, 0.95);
+}
+
+.caption--check .caption__amount {
+    color: #ff8fb4;
+}
+
 /* --------------------------------------------------------------- индикатор */
 
 /* По умолчанию невидим, чтобы не лезть в кадр: показывается при наведении

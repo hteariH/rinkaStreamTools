@@ -13,6 +13,7 @@
  *
  * Отладка:
  *   /screamer?ping           — мигнуть меткой при подключении
+ *   /screamer?variant=heart  — сердечко: проверка связки, которая не пугает
  *   /screamer?variant=lunge  — всегда показывать одну конкретную вариацию
  *   /screamer?demo           — прогнать все вариации подряд, ничего не ожидая от сервера
  *   /screamer?opacity=0.6    — подобрать, насколько скример перекрывает игру
@@ -285,7 +286,77 @@ const VARIANTS = {
             play('stinger', { delay: 2.4 });
         },
     },
+
+    /*
+     * Сердечко — не скример, а проверка. Показывает, что оверлей жив, стоит там,
+     * где надо, и с нужной прозрачностью, — но не пугает: проверять связку перед
+     * эфиром, вздрагивая каждый раз, невозможно.
+     *
+     * check: true выводит вариацию из случайного набора, поэтому на настоящий
+     * донат она не выпадет никогда — только если её выбрали руками.
+     */
+    heart: {
+        check: true,
+        caption: 'caption--check',
+        tiers: [],
+        images: [],
+        render() {
+            const root = el('div', 'variant variant--heart');
+            root.appendChild(el('div', 'heart-glow'));
+
+            const heart = el('div', 'heart');
+            heart.innerHTML = HEART_SVG;
+            root.appendChild(heart);
+
+            // Мелкие сердечки летят вверх — заодно видно, что анимации не встали.
+            for (let i = 0; i < 12; i++) {
+                const spark = el('i', 'heart-spark');
+                spark.innerHTML = HEART_SVG;
+                spark.style.cssText = `left:${5 + Math.random() * 90}%;` +
+                    `--size:${14 + Math.random() * 26}px;` +
+                    `animation-delay:${Math.random() * 1.6}s;` +
+                    `animation-duration:${2.4 + Math.random() * 1.8}s`;
+                root.appendChild(spark);
+            }
+            return root;
+        },
+        sound() {
+            chime();
+        },
+    },
 };
+
+const HEART_SVG =
+    '<svg viewBox="0 0 32 29" aria-hidden="true">' +
+    '<path d="M16 29S1 19.5 1 9.9A8.9 8.9 0 0 1 16 4a8.9 8.9 0 0 1 15 5.9C31 19.5 16 29 16 29z"/>' +
+    '</svg>';
+
+/**
+ * Мягкий двузвучный сигнал вместо крика: проверка должна убедиться, что звук из
+ * оверлея вообще доходит до OBS, и при этом не бить по ушам. Синтезируем на месте,
+ * чтобы не тащить ещё один файл ради одной кнопки.
+ */
+function chime() {
+    try {
+        const audio = new (window.AudioContext || window.webkitAudioContext)();
+        [[880, 0], [1320, 0.16]].forEach(([freq, at]) => {
+            const osc = audio.createOscillator();
+            const gain = audio.createGain();
+            osc.type = 'sine';
+            osc.frequency.value = freq;
+            // Плавное затухание: резкий обрыв синуса даёт щелчок.
+            gain.gain.setValueAtTime(0.0001, audio.currentTime + at);
+            gain.gain.exponentialRampToValueAtTime(0.25, audio.currentTime + at + 0.02);
+            gain.gain.exponentialRampToValueAtTime(0.0001, audio.currentTime + at + 0.5);
+            osc.connect(gain).connect(audio.destination);
+            osc.start(audio.currentTime + at);
+            osc.stop(audio.currentTime + at + 0.55);
+        });
+        setTimeout(() => audio.close(), 1500);
+    } catch (error) {
+        console.warn('Не удалось проиграть сигнал проверки:', error);
+    }
+}
 
 /* ---------------------------------------------------------------- показ */
 
@@ -298,8 +369,11 @@ function variantsFor(tier) {
     const forced = params.get('variant');
     if (forced && VARIANTS[forced]) return [forced];
 
-    const suitable = Object.keys(VARIANTS).filter(name => VARIANTS[name].tiers.includes(tier));
-    return suitable.length ? suitable : Object.keys(VARIANTS);
+    // Проверочные вариации показываются только по прямому выбору, иначе сердечко
+    // выпало бы вместо скримера на настоящем донате.
+    const real = Object.keys(VARIANTS).filter(name => !VARIANTS[name].check);
+    const suitable = real.filter(name => VARIANTS[name].tiers.includes(tier));
+    return suitable.length ? suitable : real;
 }
 
 function pickVariant(tier) {
@@ -388,7 +462,7 @@ function runDemo() {
         queue.push({
             type: 'screamer',
             variant: name,
-            tier: VARIANTS[name].tiers[VARIANTS[name].tiers.length - 1],
+            tier: VARIANTS[name].tiers[VARIANTS[name].tiers.length - 1] || 'check',
             durationMs: 4500,
             donorName: `Вариация: ${name}`,
             amount: 25,

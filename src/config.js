@@ -11,6 +11,9 @@ export const DEFAULTS = {
     axelchatUrl: "ws://127.0.0.1:8356",
     command: "!хил",
     theme: "default",
+    // Разыграть победителя самому, как только истечёт обратный отсчёт, — чтобы
+    // не ловить момент и не жать «Разыграть» в прямом эфире.
+    autoDrawOnTimer: false,
   },
   donationAlerts: {
     enabled: false,
