@@ -1,0 +1,16 @@
+[package]
+name = "rinka-screamer-overlay"
+version = "1.0.0"
+edition = "2021"
+description = "Прозрачный оверлей rinkaStreamTools со скримерами поверх игры"
+
+[build-dependencies]
+tauri-build = { version = "2", features = [] }
+
+[dependencies]
+tauri = { version = "2", features = ["tray-icon", "image-png"] }
+
+[profile.release]
+opt-level = "s"
+lto = true
+strip = true
