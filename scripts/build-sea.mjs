@@ -1,6 +1,6 @@
 // Собирает standalone-исполняемый файл (для текущей ОС) через esbuild + Node SEA.
-// Результат: dist/rinkaStreamTools(.exe). Рядом с ним нужны config.json и public/
-// (их кладёт в дистрибутив шаг упаковки / CI).
+// Результат: dist/rinkaStreamTools(.exe) вместе с public/ и config.json рядом —
+// папку можно zip'нуть и отдать как есть.
 //
 // Запуск: npm run build:exe   (требует Node 20+)
 
@@ -8,7 +8,7 @@ import { build } from "esbuild";
 import { inject } from "postject";
 import { execFileSync } from "node:child_process";
 import {
-  mkdirSync, copyFileSync, readFileSync, writeFileSync, rmSync,
+  mkdirSync, copyFileSync, cpSync, existsSync, readFileSync, writeFileSync, rmSync,
 } from "node:fs";
 import path from "node:path";
 import process from "node:process";
@@ -29,7 +29,7 @@ const FUSE = "NODE_SEA_FUSE_fce680ab2cc467b6e072b8b5df1996b2";
 rmSync(dist, { recursive: true, force: true });
 mkdirSync(dist, { recursive: true });
 
-console.log("[1/4] Сборка бандла (esbuild)...");
+console.log("[1/6] Сборка бандла (esbuild)...");
 await build({
   entryPoints: [path.join(root, "server.js")],
   bundle: true,
@@ -43,7 +43,7 @@ await build({
   logOverride: { "empty-import-meta": "silent" },
 });
 
-console.log("[2/4] Генерация SEA-blob...");
+console.log("[2/6] Генерация SEA-blob...");
 writeFileSync(seaConfig, JSON.stringify({
   main: bundle,
   output: blob,
@@ -51,13 +51,30 @@ writeFileSync(seaConfig, JSON.stringify({
 }));
 execFileSync(process.execPath, ["--experimental-sea-config", seaConfig], { stdio: "inherit" });
 
-console.log("[3/4] Копирование бинарника Node...");
+console.log("[3/6] Копирование бинарника Node...");
 copyFileSync(process.execPath, exePath);
 
-console.log("[4/4] Внедрение blob (postject)...");
+console.log("[4/6] Внедрение blob (postject)...");
 await inject(exePath, "NODE_SEA_BLOB", readFileSync(blob), {
   sentinelFuse: FUSE,
   ...(isMac ? { machoSegmentName: "NODE_SEA" } : {}),
 });
 
+console.log("[5/6] Копирование public/ и config.json...");
+// Без public/ рядом exe поднимется, но будет молча отдавать 404 на всё —
+// поэтому ресурсы кладём в dist сразу, а не отдельным шагом упаковки.
+cpSync(path.join(root, "public"), path.join(dist, "public"), { recursive: true });
+// Конфиг exe создаст и сам при первом запуске; кладём образец, чтобы настройки
+// можно было занести до него.
+const configSample = path.join(root, "config.example.json");
+if (existsSync(configSample)) {
+  copyFileSync(configSample, path.join(dist, "config.example.json"));
+}
+
+console.log("[6/6] Уборка промежуточных файлов...");
+for (const leftover of [bundle, blob, seaConfig]) {
+  rmSync(leftover, { force: true });
+}
+
 console.log(`\nГотово: ${exePath}`);
+console.log("Отдавать целиком папку dist — exe без public/ рядом работать не будет.");

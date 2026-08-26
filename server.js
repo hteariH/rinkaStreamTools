@@ -4,11 +4,19 @@
 
 import { existsSync } from "node:fs";
 import { loadConfig, saveConfig } from "./src/config.js";
-import { CONFIG_PATH } from "./src/paths.js";
+import { CONFIG_PATH, PUBLIC_DIR } from "./src/paths.js";
 import { log } from "./src/log.js";
 import { App } from "./src/app.js";
 
 async function main() {
+  // Без public/ сервер поднимется, но будет молча отдавать 404 на всё — самая
+  // вероятная причина этого в том, что exe вынули из папки dist и положили одиноко.
+  if (!existsSync(PUBLIC_DIR)) {
+    console.error(`Рядом нет папки public/ — ожидалась в ${PUBLIC_DIR}`);
+    console.error("Панель и оверлеи без неё не откроются. Положи exe обратно в папку dist.");
+    process.exit(1);
+  }
+
   const config = await loadConfig();
   // Первый запуск: кладём конфиг рядом, чтобы его было где править руками.
   if (!existsSync(CONFIG_PATH)) await saveConfig(config);
