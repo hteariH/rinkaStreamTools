@@ -8,7 +8,7 @@
     "start": "node server.js",
     "mock": "node tools/mock-axelchat.js",
     "build:exe": "node scripts/build-sea.mjs",
-    "test": "node --test \"test/*.test.mjs\""
+    "test": "node --test"
   },
   "license": "MIT",
   "dependencies": {
