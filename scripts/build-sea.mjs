@@ -79,10 +79,12 @@ console.log("[5/6] Копирование public/ и приложения...");
 // Ресурсы ищутся рядом с бинарником сервера, поэтому лежат в server/, а не в корне.
 cpSync(path.join(root, "public"), path.join(serverDir, "public"), { recursive: true });
 // Конфиг сервер создаст и сам при первом запуске; кладём образец, чтобы настройки
-// можно было занести до него.
-const configSample = path.join(root, "config.example.json");
-if (existsSync(configSample)) {
-  copyFileSync(configSample, path.join(serverDir, "config.example.json"));
+// можно было занести до него. Рядом — образцы таблицы донатеров и ленты: их формат
+// иначе виден только после первого эфира, а занести донаты, прошедшие мимо
+// программы, хочется до него.
+for (const sample of ["config.example.json", "donors.example.json", "recent.example.json"]) {
+  const from = path.join(root, sample);
+  if (existsSync(from)) copyFileSync(from, path.join(serverDir, sample));
 }
 
 if (existsSync(appBuilt)) {

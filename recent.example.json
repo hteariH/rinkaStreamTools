@@ -1,0 +1,68 @@
+{
+  "updatedAt": 1788026400000,
+  "donations": [
+    {
+      "id": "da-4815162342",
+      "source": "donationAlerts",
+      "name": "Аня",
+      "amount": 25,
+      "currency": "USD",
+      "message": "держись, ты лучший",
+      "at": 1788026280000
+    },
+    {
+      "id": "donatello-1787000000000",
+      "source": "donatello",
+      "name": "MaxPower",
+      "amount": 500,
+      "currency": "UAH",
+      "message": null,
+      "at": 1788025560000
+    },
+    {
+      "id": "da-4815162341",
+      "source": "donationAlerts",
+      "name": null,
+      "amount": 5,
+      "currency": "USD",
+      "message": "без имени, но от души",
+      "at": 1788024540000
+    },
+    {
+      "id": "donatello-1786997000000",
+      "source": "donatello",
+      "name": "Аня",
+      "amount": 200,
+      "currency": "UAH",
+      "message": "ещё немного",
+      "at": 1788023280000
+    },
+    {
+      "id": "da-4815162338",
+      "source": "donationAlerts",
+      "name": "gg_wp",
+      "amount": 10,
+      "currency": "USD",
+      "message": "го катку",
+      "at": 1788021600000
+    },
+    {
+      "id": "da-4815162335",
+      "source": "donationAlerts",
+      "name": "Котик",
+      "amount": 3,
+      "currency": "USD",
+      "message": "мяу",
+      "at": 1788019980000
+    },
+    {
+      "id": "da-4815162330",
+      "source": "donationAlerts",
+      "name": "MaxPower",
+      "amount": 15,
+      "currency": "USD",
+      "message": null,
+      "at": 1788018600000
+    }
+  ]
+}
