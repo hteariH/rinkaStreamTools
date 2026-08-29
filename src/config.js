@@ -79,6 +79,17 @@ export const DEFAULTS = {
     // площадках — это один человек.
     title: "Топ донатеров",
     limit: 5,
+    theme: "default",
+  },
+  recent: {
+    // Последние донаты. На оверлее это бегущая строка «имя — сумма» и ничего
+    // больше: полоса идёт под игрой, читать её успевают на ходу. Сообщения
+    // зрителей остаются в панели, в эфир они не уходят.
+    title: "Последние донаты",
+    limit: 5,
+    // Скорость бегущей строки, пикселей в секунду.
+    speed: 60,
+    theme: "default",
   },
   screamer: {
     enabled: true,
@@ -105,10 +116,35 @@ function merge(defaults, patch) {
   return out;
 }
 
+/**
+ * Раньше тема была одна на три оверлея и лежала в goal.theme. Теперь у цели, топа
+ * и ленты она своя, и тем, кто уже настроил тему цели, её надо перенести на все
+ * три: молча вернуть топ и ленту к default значит сломать собранную сцену OBS у
+ * человека, который ничего не просил менять.
+ *
+ * Разбирается это по исходному файлу, а не по слитому с умолчаниями конфигу: в
+ * слитом theme есть всегда, и «не задано» от «задано default» уже не отличить.
+ */
+function inheritGoalTheme(raw, config) {
+  for (const key of ["top", "recent"]) {
+    if (raw?.[key]?.theme === undefined && raw?.goal?.theme) {
+      // Именно новый объект, а не правка на месте: merge отдаёт нетронутые ветки
+      // умолчаний по ссылке, и запись в config.top.theme испортила бы сам DEFAULTS
+      // на весь процесс — следующий разбор конфига получил бы чужую тему.
+      config[key] = { ...config[key], theme: raw.goal.theme };
+    }
+  }
+  return config;
+}
+
+/** Конфиг из разобранного файла: умолчания плюс перенос темы со старых версий. */
+export function applyDefaults(raw) {
+  return inheritGoalTheme(raw, merge(DEFAULTS, raw));
+}
+
 export async function loadConfig() {
   try {
-    const raw = await readFile(CONFIG_PATH, "utf8");
-    return merge(DEFAULTS, JSON.parse(raw));
+    return applyDefaults(JSON.parse(await readFile(CONFIG_PATH, "utf8")));
   } catch {
     return merge(DEFAULTS, {});
   }

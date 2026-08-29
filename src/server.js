@@ -1,8 +1,9 @@
 // HTTP-сервер статики (панель + оверлеи) и WebSocket-хаб на одном порту.
 //
-// У каждого оверлея свой канал: /ws/raffle, /ws/goal, /ws/alerts, /ws/screamer,
-// плюс двусторонний /ws/control для панели управления. Каналы разведены по пути
-// апгрейда, поэтому оверлей в OBS получает только своё и не парсит чужое.
+// У каждого оверлея свой канал: /ws/raffle, /ws/goal, /ws/top, /ws/recent,
+// /ws/alerts, /ws/screamer, плюс двусторонний /ws/control для панели управления.
+// Каналы разведены по пути апгрейда, поэтому оверлей в OBS получает только своё
+// и не парсит чужое.
 
 import http from "node:http";
 import { readFile } from "node:fs/promises";
@@ -29,6 +30,7 @@ const ALIASES = {
   "/raffle": "/overlay/raffle.html",
   "/goal": "/overlay/goal.html",
   "/top": "/overlay/top.html",
+  "/recent": "/overlay/recent.html",
   "/alerts": "/overlay/alert.html",
   "/screamer": "/overlay/screamer.html",
 };

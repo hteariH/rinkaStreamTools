@@ -144,7 +144,7 @@
             </label>
           </div>
           <label class="field">
-            <span>Тема оверлеев цели и топа</span>
+            <span>Тема оверлея цели</span>
             <select id="g-theme">
               <option value="default">default — панель и золотая полоса</option>
               <option value="slim">slim — тонкая полоска без панели</option>
@@ -209,13 +209,19 @@
             </label>
           </div>
 
+          <label class="field">
+            <span>Тема оверлея</span>
+            <select id="top-theme">
+              <option value="default">default — тёмная панель, золото</option>
+              <option value="slim">slim — только текст, без панели</option>
+              <option value="neon">neon — циан по обсидиану</option>
+              <option value="hud">hud — циановая капсула</option>
+            </select>
+          </label>
+
           <div class="actions">
             <button class="btn btn--danger" id="top-reset">Очистить таблицу</button>
           </div>
-
-          <p class="note">
-            Вид оверлея берётся у цели сбора — тема задаётся там, одна на оба списка.
-          </p>
           <p class="note">
             Донаты с обеих площадок складываются по имени: один и тот же ник на
             DonationAlerts и на Donatello считается одним человеком. Общего id у зрителя
@@ -223,6 +229,57 @@
             два разных человека с одинаковым ником сложатся в одного.
             Суммы приводятся к валюте цели теми же множителями, что и сама цель.
             Анонимные донаты в список не идут — приписывать их некому.
+          </p>
+        </div>
+
+        <div class="card">
+          <h2>Последние донаты</h2>
+          <ul class="feed" id="recent-list"></ul>
+          <p class="note" id="recent-note"></p>
+
+          <div class="field-row">
+            <label class="field">
+              <span>Подпись на оверлее</span>
+              <input type="text" id="recent-title" placeholder="Последние донаты" />
+            </label>
+            <label class="field">
+              <span>Донатов в строке</span>
+              <input type="number" id="recent-limit" step="1" min="1" max="20" />
+            </label>
+          </div>
+
+          <label class="field">
+            <span>Скорость строки, пикс/сек</span>
+            <input type="number" id="recent-speed" step="5" min="10" max="400" />
+          </label>
+
+          <label class="field">
+            <span>Тема оверлея</span>
+            <select id="recent-theme">
+              <option value="default">default — тёмная панель, золото</option>
+              <option value="slim">slim — только текст, без панели</option>
+              <option value="neon">neon — циан по обсидиану</option>
+              <option value="hud">hud — циановая капсула</option>
+            </select>
+          </label>
+
+          <div class="actions">
+            <button class="btn btn--danger" id="recent-reset">Очистить ленту</button>
+          </div>
+
+          <p class="note">
+            На оверлее это <b>бегущая строка</b>: только «имя — сумма», ничего больше.
+            Сообщения зрителей видно здесь, в эфир они не уходят вовсе — на едущей
+            полосе их всё равно не прочитать.
+            «Донатов в строке» — сколько последних едет по кругу; здесь список всегда
+            полный, до полусотни.
+          </p>
+          <p class="note">
+            Тут не сумма за всё время, а сами донаты — по одному, свежие сверху.
+            Суммы показываются в той валюте, в которой пришли: множители площадок
+            нужны, чтобы складывать, а здесь складывать нечего.
+            Анонимные донаты в ленте остаются — событие было, даже если приписать
+            его некому.
           </p>
         </div>
 

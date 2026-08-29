@@ -6,7 +6,7 @@ import { existsSync } from "node:fs";
 import path from "node:path";
 
 import { Hub } from "./server.js";
-import { PUBLIC_DIR, DONORS_PATH } from "./paths.js";
+import { PUBLIC_DIR, DONORS_PATH, RECENT_PATH } from "./paths.js";
 import { log } from "./log.js";
 import { saveConfig } from "./config.js";
 import { Raffle } from "./raffle/raffle.js";
@@ -15,6 +15,7 @@ import { DonationAlertsSource } from "./donations/donationalerts.js";
 import { DonatelloSource } from "./donations/donatello.js";
 import { Goal } from "./donations/goal.js";
 import { Donors } from "./donations/donors.js";
+import { Recent } from "./donations/recent.js";
 import { tierFor } from "./donations/rules.js";
 
 export class App {
@@ -47,12 +48,17 @@ export class App {
     // одной площадки и доллары с другой сложились бы в бессмыслицу.
     this.donors = new Donors(DONORS_PATH, (source) => this.config[source]?.rate ?? 1);
 
+    // Лента последних донатов, наоборот, множители не трогает: там не сумма, а
+    // сами донаты — каждый в валюте, в которой пришёл.
+    this.recent = new Recent(RECENT_PATH);
+
     this.hub = new Hub(
       config.port,
       {
         "/ws/raffle": () => this.raffle.snapshot(),
         "/ws/goal": () => this.goal.snapshot(),
         "/ws/top": () => this.topSnapshot(),
+        "/ws/recent": () => this.recentSnapshot(),
         // Алерты и скримеры — поток событий, начального состояния у них нет:
         // оверлей, подключившийся после доната, показывать его задним числом не должен.
         "/ws/alerts": () => this.alertsHello(),
@@ -67,6 +73,7 @@ export class App {
 
   async start() {
     await this.donors.load();
+    await this.recent.load();
     await this.hub.start();
 
     this._wireAxelChat();
@@ -131,7 +138,9 @@ export class App {
     if (!donation.test) {
       this.refreshGoalSoon();
       this.donors.add(donation);
+      this.recent.add(donation);
       this.pushTop();
+      this.pushRecent();
     }
 
     if (!this.config.alerts.enabled) return;
@@ -255,9 +264,19 @@ export class App {
   topSnapshot() {
     return this.donors.snapshot(
       this.config.top,
+      // Валюта — общая, от цели: суммы в топе приведены к ней же.
       this.config.goal.currency || "USD",
-      this.config.goal.theme || "default"
+      this.config.top.theme || "default"
     );
+  }
+
+  pushRecent() {
+    this.hub.broadcast("/ws/recent", this.recentSnapshot());
+    this.pushControl();
+  }
+
+  recentSnapshot() {
+    return this.recent.snapshot(this.config.recent, this.config.recent.theme || "default");
   }
 
   pushControl() {
@@ -271,6 +290,9 @@ export class App {
       raffle: { ...this.raffle.snapshot(), participants: this.raffle.entries() },
       goal: this.goal.snapshot(),
       top: this.topSnapshot(),
+      // В панели лента полная и с сообщениями, а не та обрезанная, что едет
+      // строкой на оверлее.
+      recent: { donations: this.recent.history() },
       status: {
         axelchat: this.axelchatStatus,
         donationAlerts: this.donationAlerts.enabled ? this.donationAlerts.status : "off",
@@ -324,6 +346,11 @@ export class App {
         this.donors.reset();
         log.info("top", "таблица донатеров очищена");
         this.pushTop();
+        return;
+      case "recent.reset":
+        this.recent.reset();
+        log.info("recent", "лента последних донатов очищена");
+        this.pushRecent();
         return;
       case "goal.refresh":
         this.goal.poll().then(() => {
@@ -426,6 +453,7 @@ export class App {
     this.pushGoal();
     this.hub.broadcast("/ws/alerts", this.alertsHello());
     this.pushTop();
+    this.pushRecent();
     this.hub.broadcast("/ws/screamer", { type: "hello", opacity: next.screamer.opacity });
   }
 }

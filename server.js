@@ -1,6 +1,6 @@
 // rinkaStreamTools — точка входа.
 // Поднимает локальный сервер: панель управления на "/" и оверлеи для OBS
-// на /raffle, /goal, /alerts и /screamer.
+// на /raffle, /goal, /top, /recent, /alerts и /screamer.
 
 import { existsSync } from "node:fs";
 import { loadConfig, saveConfig } from "./src/config.js";
@@ -56,6 +56,7 @@ async function main() {
   console.log(`    розыгрыш          http://localhost:${config.port}/raffle`);
   console.log(`    цель сбора        http://localhost:${config.port}/goal`);
   console.log(`    топ донатеров     http://localhost:${config.port}/top`);
+  console.log(`    последние донаты  http://localhost:${config.port}/recent`);
   console.log(`    алерты донатов    http://localhost:${config.port}/alerts`);
   console.log(`    скримеры          http://localhost:${config.port}/screamer`);
   console.log("");

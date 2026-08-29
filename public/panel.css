@@ -188,6 +188,24 @@ input[type="range"] { width: 100%; accent-color: var(--gold); }
 .top-list li:first-child::before { color: var(--gold); }
 .top-list b { margin-left: auto; color: var(--green); font-variant-numeric: tabular-nums; }
 
+/* Лента последних донатов: сумма и время в первой строке, сообщение — во второй,
+   через всю ширину, иначе длинный текст выдавливает цифры. */
+.feed {
+  list-style: none; margin-top: 4px; display: flex; flex-direction: column; gap: 6px;
+  /* Лента длинная — вся история эфира, — но карточку она растягивать не должна. */
+  max-height: 300px; overflow-y: auto;
+}
+.feed:empty { display: none; }
+.feed li {
+  display: flex; align-items: baseline; gap: 10px; flex-wrap: wrap;
+  padding: 8px 12px; background: var(--card-2);
+  border: 1px solid var(--line); border-radius: 9px;
+}
+.feed .who { font-weight: 600; }
+.feed b { margin-left: auto; color: var(--green); font-variant-numeric: tabular-nums; }
+.feed .at { font-size: 12px; color: var(--muted); font-variant-numeric: tabular-nums; }
+.feed .msg { flex: 1 0 100%; font-size: 13px; color: var(--muted); word-break: break-word; }
+
 .source {
   padding: 14px; margin-bottom: 14px;
   background: var(--card-2); border: 1px solid var(--line); border-radius: 11px;

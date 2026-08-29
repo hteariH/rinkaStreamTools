@@ -1,0 +1,289 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>rinkaStreamTools — последние донаты</title>
+  <style>
+    /* ===== База: прозрачный фон для Browser Source в OBS ===== */
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    html, body {
+      background: transparent; height: 100%; overflow: hidden;
+      font-family: "Segoe UI", Roboto, system-ui, sans-serif; color: #fff;
+    }
+
+    /* Строка занимает всю ширину источника: её ставят полосой под игрой, а не в
+       угол, как топ и цель. Высота — по содержимому. */
+    #app { padding: 10px 0; }
+
+    .board {
+      display: flex; align-items: center; gap: 16px;
+      width: 100%; padding: 10px 18px; overflow: hidden;
+    }
+
+    /* Подпись не едет вместе с донатами: она объясняет, что это за полоса, и
+       уезжающий заголовок объяснял бы это раз в круг. */
+    .title { flex: 0 0 auto; font-size: 19px; font-weight: 800; white-space: nowrap; }
+    .title:empty { display: none; }
+
+    /* Донаты не обрубаются по краю, а растворяются: полоса едет по кругу, и
+       ровный срез на границе виден как склейка. */
+    .viewport {
+      flex: 1; overflow: hidden;
+      -webkit-mask-image: linear-gradient(90deg, transparent 0, #000 22px, #000 calc(100% - 22px), transparent 100%);
+      mask-image: linear-gradient(90deg, transparent 0, #000 22px, #000 calc(100% - 22px), transparent 100%);
+    }
+
+    .track {
+      display: flex; width: max-content;
+      /* Смещение ровно на одну копию списка — стык не виден. */
+      animation: ticker linear infinite;
+      will-change: transform;
+    }
+    .track--still { animation: none; }
+
+    .group { display: flex; flex: 0 0 auto; }
+
+    .item {
+      display: flex; align-items: baseline; gap: 9px;
+      padding-right: 26px; white-space: nowrap; font-size: 20px; line-height: 1.3;
+    }
+    /* Разделитель между донатами — часть строки, а не отдельный элемент. */
+    .item::after { content: "•"; margin-left: 26px; opacity: .45; }
+    .item .name { font-weight: 700; }
+    .item .dash { opacity: .55; }
+    .item .sum { font-weight: 800; font-variant-numeric: tabular-nums; }
+
+    @keyframes ticker {
+      from { transform: translateX(0); }
+      to   { transform: translateX(calc(-1 * var(--shift, 0px))); }
+    }
+
+    .empty { font-size: 17px; opacity: .6; white-space: nowrap; }
+
+    /* ============================================================
+       ТЕМА: default — тёмная панель, золото и зелёные суммы
+       ============================================================ */
+    #app[data-theme="default"] .board {
+      background: rgba(15, 15, 25, .72); border-radius: 14px;
+      backdrop-filter: blur(4px); box-shadow: 0 6px 24px rgba(0, 0, 0, .45);
+      text-shadow: 0 2px 6px rgba(0, 0, 0, .6);
+    }
+    #app[data-theme="default"] .title { color: #ffd54a; }
+    #app[data-theme="default"] .sum { color: #7CFC7C; }
+
+    /* ============================================================
+       ТЕМА: slim — только текст, без панели
+       ============================================================ */
+    #app[data-theme="slim"] .board { padding: 0; }
+    #app[data-theme="slim"] .board,
+    #app[data-theme="slim"] .board * { text-shadow: 0 2px 8px #000; }
+    #app[data-theme="slim"] .title { font-size: 17px; }
+    #app[data-theme="slim"] .item { font-size: 18px; }
+    #app[data-theme="slim"] .sum { color: #7CFC7C; }
+
+    /* ============================================================
+       ТЕМА: neon — циан по обсидиану, рамка и скан-линии
+       ============================================================ */
+    #app[data-theme="neon"] .board {
+      position: relative;
+      background: rgba(4, 10, 16, .8);
+      border: 1px solid rgba(80, 230, 255, .5);
+      box-shadow: 0 0 22px rgba(0, 200, 255, .28), inset 0 0 22px rgba(0, 180, 255, .12);
+      font-family: "Consolas", monospace;
+    }
+    /* Скан-линии поверх всего, но кликов на оверлее нет — перехватывать нечего. */
+    #app[data-theme="neon"] .board::after {
+      content: ""; position: absolute; inset: 0; pointer-events: none;
+      background: repeating-linear-gradient(180deg, rgba(0, 0, 0, .3) 0 2px, transparent 2px 4px);
+    }
+    #app[data-theme="neon"] .title {
+      color: #8ff0ff; text-transform: uppercase; letter-spacing: .12em; font-size: 17px;
+      text-shadow: 0 0 12px rgba(80, 230, 255, .8);
+    }
+    #app[data-theme="neon"] .sum { color: #6ff0ff; text-shadow: 0 0 14px rgba(80, 230, 255, .9); }
+    #app[data-theme="neon"] .item::after { color: rgba(143, 240, 255, .6); }
+
+    /* ============================================================
+       ТЕМА: hud — циановая капсула, подпись по центру
+       ============================================================ */
+    #app[data-theme="hud"] .board {
+      background: rgba(8, 8, 10, .88); border-radius: 999px;
+      border: 1px solid rgba(255, 255, 255, .22);
+      box-shadow: 0 4px 18px rgba(0, 0, 0, .5);
+      font-family: "Consolas", monospace; padding: 8px 22px;
+    }
+    #app[data-theme="hud"] .title {
+      color: #fff; font-size: 16px;
+      letter-spacing: .3em; text-indent: .3em; text-transform: uppercase;
+      text-shadow: 0 2px 6px rgba(0, 0, 0, .9);
+    }
+    #app[data-theme="hud"] .sum { color: #3cdcf0; text-shadow: 0 0 12px rgba(60, 220, 240, .6); }
+    #app[data-theme="hud"] .item::after { color: rgba(60, 220, 240, .5); }
+
+    .offline {
+      position: fixed; bottom: 6px; right: 12px;
+      font-size: 12px; opacity: .5; display: none;
+    }
+    .offline.show { display: block; }
+  </style>
+</head>
+<body>
+  <div id="app" data-theme="default">
+    <div class="board">
+      <div class="title" id="title"></div>
+      <div class="viewport" id="viewport">
+        <div class="track" id="track"></div>
+      </div>
+    </div>
+  </div>
+  <div class="offline" id="offline">нет связи</div>
+
+  <script>
+    /*
+     * Последние донаты — бегущей строкой. Слушает /ws/recent.
+     *
+     * На оверлее только «имя — сумма»: полоса едет, и читать на ходу успевают
+     * ровно это. Сообщения зрителей сюда не приходят вовсе — они в панели.
+     *
+     * Вид берётся у оверлея цели: тема одна на все списки, чтобы в сцене OBS они
+     * не выглядели из разных приложений.
+     *
+     * Отладка:
+     *   /recent?demo        — показать пример, ничего не ожидая от сервера
+     *   /recent?theme=neon  — перебить тему, не трогая настройки
+     *   /recent?speed=120   — подобрать скорость вживую, не трогая настройки
+     */
+    const el = (id) => document.getElementById(id);
+    const app = el("app");
+    const THEMES = ["default", "slim", "neon", "hud"];
+
+    // Тему и скорость можно перебить прямо в адресе источника OBS.
+    const params = new URLSearchParams(location.search);
+    const forcedTheme = THEMES.includes(params.get("theme")) ? params.get("theme") : null;
+    const forcedSpeed = Number(params.get("speed")) > 0 ? Number(params.get("speed")) : null;
+
+    function fmt(value) {
+      const number = Number(value) || 0;
+      return Number.isInteger(number) ? String(number) : number.toFixed(2);
+    }
+
+    // Последнее состояние держим при себе: строку надо пересобирать и когда
+    // меняется ширина источника в OBS, а нового сообщения при этом нет.
+    let current = null;
+    let lastSignature = null;
+
+    function render(state) {
+      if (!state || state.type !== "recent") return;
+
+      const theme = forcedTheme || (THEMES.includes(state.theme) ? state.theme : "default");
+      if (app.dataset.theme !== theme) app.dataset.theme = theme;
+
+      el("title").textContent = state.title || "";
+
+      // Пересобираем только когда лента реально изменилась: иначе строка
+      // дёргалась бы в начало на каждом обновлении соседних оверлеев.
+      const signature = JSON.stringify(state.donations) + ":" + state.speed;
+      if (signature === lastSignature) return;
+      lastSignature = signature;
+
+      current = state;
+      build(state);
+    }
+
+    function build(state) {
+      const track = el("track");
+      track.innerHTML = "";
+      track.classList.remove("track--still");
+      track.style.removeProperty("--shift");
+      track.style.animationDuration = "";
+
+      if (!state.donations.length) {
+        // Пустую полосу в OBS не поставить на место — не видно, где она.
+        track.classList.add("track--still");
+        const empty = document.createElement("div");
+        empty.className = "empty";
+        empty.textContent = "Пока пусто";
+        track.appendChild(empty);
+        return;
+      }
+
+      const group = document.createElement("div");
+      group.className = "group";
+      for (const donation of state.donations) group.appendChild(itemNode(donation));
+      track.appendChild(group);
+
+      const width = group.offsetWidth;
+      if (!width) return;
+
+      /*
+       * Копий столько, чтобы дорожка перекрывала окно с запасом: строка едет
+       * ровно на одну копию и начинает круг заново, а в этот момент следующая
+       * копия уже занимает всё окно — стыка не видно. Двух копий хватает только
+       * когда список сам шире окна, а трёх донатов на широкой сцене — нет.
+       */
+      const copies = Math.max(2, Math.ceil(el("viewport").offsetWidth / width) + 1);
+      for (let i = 1; i < copies; i += 1) track.appendChild(group.cloneNode(true));
+
+      const speed = forcedSpeed || Number(state.speed) || 60;
+      track.style.setProperty("--shift", `${width}px`);
+      track.style.animationDuration = `${width / speed}s`;
+    }
+
+    function itemNode(donation) {
+      const item = document.createElement("div");
+      item.className = "item";
+
+      const name = document.createElement("span");
+      name.className = "name";
+      // Именно innerText: ник — чужой ввод. Аноним остаётся в строке: приписать
+      // донат некому, но событие было.
+      name.innerText = donation.name || "Аноним";
+
+      const dash = document.createElement("span");
+      dash.className = "dash";
+      dash.textContent = "—";
+
+      const sum = document.createElement("span");
+      sum.className = "sum";
+      sum.textContent = `${fmt(donation.amount)} ${donation.currency || ""}`.trim();
+
+      item.append(name, dash, sum);
+      return item;
+    }
+
+    // Ширину источника в OBS меняют мышкой при настройке сцены — число копий
+    // под неё пересчитывается, иначе в широкой полосе появлялся бы разрыв.
+    let resizeTimer = null;
+    addEventListener("resize", () => {
+      clearTimeout(resizeTimer);
+      resizeTimer = setTimeout(() => { if (current) build(current); }, 200);
+    });
+
+    let ws;
+    function connect() {
+      const proto = location.protocol === "https:" ? "wss" : "ws";
+      ws = new WebSocket(`${proto}://${location.host}/ws/recent`);
+      ws.onopen = () => el("offline").classList.remove("show");
+      ws.onmessage = (ev) => { try { render(JSON.parse(ev.data)); } catch {} };
+      ws.onclose = () => { el("offline").classList.add("show"); setTimeout(connect, 1500); };
+      ws.onerror = () => { try { ws.close(); } catch {} };
+    }
+
+    if (params.has("demo")) {
+      render({
+        type: "recent", title: "Последние донаты", theme: params.get("theme"), speed: 60,
+        donations: [
+          { id: "1", name: "Аня", amount: 500, currency: "UAH" },
+          { id: "2", name: "MaxPower", amount: 10, currency: "USD" },
+          { id: "3", name: null, amount: 3, currency: "USD" },
+          { id: "4", name: "gg_wp", amount: 250, currency: "UAH" },
+          { id: "5", name: "Котик", amount: 5, currency: "USD" },
+        ],
+      });
+    } else {
+      connect();
+    }
+  </script>
+</body>
+</html>

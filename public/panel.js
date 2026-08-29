@@ -119,6 +119,12 @@ bind("g-theme", "goal.theme");
 
 bind("top-title", "top.title");
 bind("top-limit", "top.limit", { type: "number" });
+bind("top-theme", "top.theme");
+
+bind("recent-title", "recent.title");
+bind("recent-limit", "recent.limit", { type: "number" });
+bind("recent-speed", "recent.speed", { type: "number" });
+bind("recent-theme", "recent.theme");
 
 bind("da-enabled", "donationAlerts.enabled", { type: "checkbox" });
 bind("da-url", "donationAlerts.widgetUrl");
@@ -222,6 +228,10 @@ el("top-reset").addEventListener("click", () => {
   if (confirm("Очистить таблицу донатеров? Суммы за эфир пропадут.")) {
     send({ type: "top.reset" });
   }
+});
+
+el("recent-reset").addEventListener("click", () => {
+  if (confirm("Очистить ленту последних донатов?")) send({ type: "recent.reset" });
 });
 
 /* ------------------------------------------------------------- скримеры */
@@ -511,6 +521,7 @@ function tierHtml(tier, index) {
 function renderTop(top, config) {
   setValue(el("top-title"), config.top.title);
   setValue(el("top-limit"), config.top.limit);
+  setValue(el("top-theme"), config.top.theme);
 
   el("top-list").innerHTML = top.donors.length
     ? top.donors
@@ -537,12 +548,38 @@ function renderTop(top, config) {
   el("top-note").textContent = parts.join(" ");
 }
 
+function renderRecent(recent, config) {
+  setValue(el("recent-title"), config.recent.title);
+  setValue(el("recent-limit"), config.recent.limit);
+  setValue(el("recent-speed"), config.recent.speed);
+  setValue(el("recent-theme"), config.recent.theme);
+
+  // В панели лента полная и с сообщениями — в отличие от бегущей строки, где
+  // только имя и сумма. Время точное, а не «5 минут назад»: панель открыта рядом
+  // с OBS, и по ней сверяют, дошёл ли конкретный донат.
+  el("recent-list").innerHTML = recent.donations
+    .map(
+      (donation) => `<li>
+        <span class="who">${escapeHtml(donation.name || "Аноним")}</span>
+        <b>${fmtMoney(donation.amount)} ${escapeHtml(donation.currency)}</b>
+        <span class="at">${new Date(donation.at).toLocaleTimeString("ru-RU")}</span>
+        ${donation.message ? `<span class="msg">${escapeHtml(donation.message)}</span>` : ""}
+      </li>`
+    )
+    .join("");
+
+  el("recent-note").textContent = recent.donations.length
+    ? ""
+    : "Пока пусто — донаты появятся здесь по мере эфира.";
+}
+
 function renderUrls(port) {
   const base = `http://localhost:${port}`;
   const items = [
     ["Розыгрыш", "/raffle"],
     ["Цель сбора", "/goal"],
     ["Топ донатеров", "/top"],
+    ["Последние донаты", "/recent"],
     ["Алерты донатов", "/alerts"],
     ["Скримеры", "/screamer"],
   ];
@@ -609,6 +646,7 @@ function render(next) {
   renderRaffle(next.raffle);
   renderGoal(next.goal, next.config);
   renderTop(next.top, next.config);
+  renderRecent(next.recent, next.config);
   renderUrls(next.config.port);
   if (next.log) renderLog(next.log);
 }

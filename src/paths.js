@@ -28,5 +28,8 @@ export const BASE_DIR = isSea()
 
 export const PUBLIC_DIR = path.join(BASE_DIR, "public");
 export const CONFIG_PATH = path.join(BASE_DIR, "config.json");
-// Таблица донатеров — данные, а не настройки, поэтому лежит отдельно от конфига.
+// Таблица донатеров и лента последних донатов — данные, а не настройки, поэтому
+// лежат отдельно от конфига и друг от друга: очистить одно, не трогая другое,
+// иначе было бы нельзя.
 export const DONORS_PATH = path.join(BASE_DIR, "donors.json");
+export const RECENT_PATH = path.join(BASE_DIR, "recent.json");

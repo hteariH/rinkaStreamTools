@@ -1,6 +1,6 @@
-// Связка «донат → тир → алерт/скример → таблица донатеров» на настоящем пути,
-// а не через кнопку проверки: тестовый донат намеренно не идёт ни в цель, ни в
-// таблицу, поэтому кнопкой эту часть не проверить.
+// Связка «донат → тир → алерт/скример → таблица донатеров и лента последних» на
+// настоящем пути, а не через кнопку проверки: тестовый донат намеренно не идёт ни
+// в цель, ни в таблицу, ни в ленту, поэтому кнопкой эту часть не проверить.
 
 import test from "node:test";
 import assert from "node:assert/strict";
@@ -20,9 +20,11 @@ function makeApp(patch = {}) {
   Object.assign(config, patch);
   const app = new App(config);
 
-  // Таблица донатеров пишется на диск — уводим её во временную папку.
+  // Таблица донатеров и лента последних донатов пишутся на диск — уводим обе во
+  // временную папку, иначе тест затирает данные живого эфира рядом с конфигом.
   const dir = mkdtempSync(path.join(tmpdir(), "rst-pipeline-"));
   app.donors.filePath = path.join(dir, "donors.json");
+  app.recent.filePath = path.join(dir, "recent.json");
 
   return { app, cleanup: () => rmSync(dir, { recursive: true, force: true }) };
 }
@@ -55,6 +57,38 @@ test("донат из кнопки проверки в таблицу не ид�
   app.onDonation(donation({ amount: 10, test: true }));
 
   assert.deepEqual(app.topSnapshot().donors, [], "тестовый донат попал в таблицу");
+  cleanup();
+});
+
+test("настоящий донат попадает в ленту последних, а тестовый — нет", () => {
+  const { app, cleanup } = makeApp();
+  app.onDonation(donation({ amount: 10 }));
+  app.onDonation(donation({ amount: 99, test: true }));
+
+  const recent = app.recentSnapshot();
+  assert.equal(recent.donations.length, 1, "тестовый донат попал в ленту");
+  assert.equal(recent.donations[0].amount, 10);
+  cleanup();
+});
+
+test("в ленте аноним остаётся, а в таблице донатеров его нет", () => {
+  const { app, cleanup } = makeApp();
+  app.onDonation(donation({ donorName: null, amount: 7 }));
+
+  assert.equal(app.recentSnapshot().donations.length, 1, "аноним выпал из ленты");
+  assert.deepEqual(app.topSnapshot().donors, [], "аноним попал в таблицу");
+  cleanup();
+});
+
+test("в ленте сумма остаётся в валюте доната, множитель площадки к ней не идёт", () => {
+  const { app, cleanup } = makeApp({
+    donatello: { ...DEFAULTS.donatello, rate: 0.5 },
+  });
+  app.onDonation(donation({ source: "donatello", amount: 10, currency: "UAH" }));
+
+  const [first] = app.recentSnapshot().donations;
+  assert.equal(first.amount, 10, "к ленте применился множитель площадки");
+  assert.equal(first.currency, "UAH");
   cleanup();
 });
 
