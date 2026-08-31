@@ -101,7 +101,7 @@
     "theme": "default"
   },
   "screamer": {
-    "enabled": true,
+    "enabled": false,
     "opacity": 0.75,
     "durationMs": 5000,
     "baseCurrency": "USD"
