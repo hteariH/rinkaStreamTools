@@ -4,3 +4,6 @@ config.json
 *.log
 donors.json
 recent.json
+
+# Проект IntelliJ IDEA: у каждого свои, в репозитории им делать нечего.
+.idea/

@@ -88,6 +88,18 @@
       }
     ]
   },
+  "nowplaying": {
+    "enabled": false,
+    "source": "system",
+    "filePath": "",
+    "appFilter": "",
+    "hideWhenPaused": true,
+    "cover": true,
+    "title": "Сейчас играет",
+    "speed": 40,
+    "pollIntervalMs": 1500,
+    "theme": "default"
+  },
   "screamer": {
     "enabled": true,
     "opacity": 0.75,

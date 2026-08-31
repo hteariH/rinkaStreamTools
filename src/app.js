@@ -16,6 +16,7 @@ import { DonatelloSource } from "./donations/donatello.js";
 import { Goal } from "./donations/goal.js";
 import { Donors } from "./donations/donors.js";
 import { Recent } from "./donations/recent.js";
+import { NowPlaying } from "./nowplaying/nowplaying.js";
 import { tierFor } from "./donations/rules.js";
 
 export class App {
@@ -52,6 +53,10 @@ export class App {
     // сами донаты — каждый в валюте, в которой пришёл.
     this.recent = new Recent(RECENT_PATH);
 
+    // Что играет — сбоку от донатов: со сбором это не связано никак, поэтому и
+    // канал у оверлея свой.
+    this.nowPlaying = new NowPlaying(config.nowplaying);
+
     this.hub = new Hub(
       config.port,
       {
@@ -59,6 +64,7 @@ export class App {
         "/ws/goal": () => this.goal.snapshot(),
         "/ws/top": () => this.topSnapshot(),
         "/ws/recent": () => this.recentSnapshot(),
+        "/ws/track": () => this.trackSnapshot(),
         // Алерты и скримеры — поток событий, начального состояния у них нет:
         // оверлей, подключившийся после доната, показывать его задним числом не должен.
         "/ws/alerts": () => this.alertsHello(),
@@ -80,10 +86,13 @@ export class App {
     this._wireSource("donationAlerts", this.donationAlerts);
     this._wireSource("donatello", this.donatello);
 
+    this._wireNowPlaying();
+
     this.axelchat.start();
     this.donationAlerts.start();
     this.donatello.start();
     this.goal.start();
+    this.nowPlaying.start();
 
     log.on("line", (entry) => this.hub.broadcast("/ws/control", { type: "log", entry }));
 
@@ -113,6 +122,14 @@ export class App {
       log.info("raffle", `+ ${added.name} [${added.serviceId}] (всего: ${this.raffle.list().length})`);
       this.pushRaffle();
     });
+  }
+
+  _wireNowPlaying() {
+    this.nowPlaying.on("change", () => this.pushTrack());
+    this.nowPlaying.on("status", () => this.pushControl());
+    this.nowPlaying.on("log", (text) => log.info("track", text));
+    // Список приложений идёт только в панель: на оверлее ему делать нечего.
+    this.nowPlaying.on("apps", () => this.pushControl());
   }
 
   _wireSource(key, source) {
@@ -279,6 +296,15 @@ export class App {
     return this.recent.snapshot(this.config.recent, this.config.recent.theme || "default");
   }
 
+  pushTrack() {
+    this.hub.broadcast("/ws/track", this.trackSnapshot());
+    this.pushControl();
+  }
+
+  trackSnapshot() {
+    return this.nowPlaying.snapshot(this.config.nowplaying.theme || "default");
+  }
+
   pushControl() {
     this.hub.broadcast("/ws/control", this.controlState());
   }
@@ -293,10 +319,14 @@ export class App {
       // В панели лента полная и с сообщениями, а не та обрезанная, что едет
       // строкой на оверлее.
       recent: { donations: this.recent.history() },
+      // В панели трек как есть, вместе с паузой: прячет её только оверлей, а
+      // стримеру видно, что музыка вообще идёт.
+      nowplaying: { track: this.nowPlaying.current, apps: this.nowPlaying.apps },
       status: {
         axelchat: this.axelchatStatus,
         donationAlerts: this.donationAlerts.enabled ? this.donationAlerts.status : "off",
         donatello: this.donatello.enabled ? this.donatello.status : "off",
+        nowplaying: this.nowPlaying.status,
       },
       log: log.recent(),
     };
@@ -347,6 +377,21 @@ export class App {
         log.info("top", "таблица донатеров очищена");
         this.pushTop();
         return;
+      case "test.track": {
+        // Демо-трек, чтобы поставить оверлей на место в OBS, не дожидаясь, пока
+        // сменится песня. Держится до следующей настоящей смены трека.
+        this.hub.broadcast("/ws/track", {
+          ...this.trackSnapshot(),
+          track: {
+            title: "Звезда по имени Солнце",
+            artist: "Кино",
+            status: "playing",
+            cover: null,
+          },
+        });
+        log.info("track", "проверка: демо-трек на оверлее");
+        return;
+      }
       case "recent.reset":
         this.recent.reset();
         log.info("recent", "лента последних донатов очищена");
@@ -446,6 +491,7 @@ export class App {
       donationAlerts: next.donationAlerts,
       donatello: next.donatello,
     });
+    this.nowPlaying.configure(next.nowplaying);
 
     if (portChanged) log.warn("server", "порт сменится после перезапуска");
 
@@ -454,6 +500,7 @@ export class App {
     this.hub.broadcast("/ws/alerts", this.alertsHello());
     this.pushTop();
     this.pushRecent();
+    this.pushTrack();
     this.hub.broadcast("/ws/screamer", { type: "hello", opacity: next.screamer.opacity });
   }
 }

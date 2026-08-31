@@ -33,3 +33,7 @@ export const CONFIG_PATH = path.join(BASE_DIR, "config.json");
 // иначе было бы нельзя.
 export const DONORS_PATH = path.join(BASE_DIR, "donors.json");
 export const RECENT_PATH = path.join(BASE_DIR, "recent.json");
+// Опрос медиасессии Windows делает скрипт на PowerShell — он лежит рядом со своим
+// модулем и в собранную папку кладётся по тому же относительному пути, чтобы
+// искать его в двух режимах запуска не пришлось по-разному.
+export const NOWPLAYING_SCRIPT = path.join(BASE_DIR, "src", "nowplaying", "session.ps1");

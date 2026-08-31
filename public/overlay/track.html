@@ -1,0 +1,307 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>rinkaStreamTools — сейчас играет</title>
+  <style>
+    /* ===== База: прозрачный фон для Browser Source в OBS ===== */
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    html, body {
+      background: transparent; height: 100%; overflow: hidden;
+      font-family: "Segoe UI", Roboto, system-ui, sans-serif; color: #fff;
+    }
+
+    /* Карточка прижата к левому верхнему углу источника и растёт по содержимому:
+       её ставят в угол сцены, а не полосой во всю ширину, как ленту донатов. */
+    #app { padding: 10px; }
+
+    .board {
+      display: inline-flex; align-items: center; gap: 14px;
+      max-width: 100%; padding: 10px 16px;
+      /* Тишина — это не пустая карточка, а ничего: висеть полстрима с надписью
+         «ничего не играет» оверлею незачем. */
+      opacity: 0; transform: translateY(-6px);
+      transition: opacity .45s ease, transform .45s ease;
+    }
+    .board.show { opacity: 1; transform: none; }
+
+    .cover {
+      flex: 0 0 auto; width: 64px; height: 64px; border-radius: 10px;
+      object-fit: cover; background: rgba(255, 255, 255, .08);
+      box-shadow: 0 4px 14px rgba(0, 0, 0, .5);
+    }
+    .cover.hidden { display: none; }
+
+    /* Полоски-эквалайзер: по ним видно, что музыка идёт, даже когда обложки нет. */
+    .eq { flex: 0 0 auto; display: flex; align-items: flex-end; gap: 3px; height: 22px; }
+    .eq span {
+      width: 4px; border-radius: 2px; background: currentColor;
+      animation: bounce .9s ease-in-out infinite;
+    }
+    .eq span:nth-child(1) { height: 40%; animation-delay: -.5s; }
+    .eq span:nth-child(2) { height: 90%; animation-delay: -.2s; }
+    .eq span:nth-child(3) { height: 60%; animation-delay: -.8s; }
+    .eq span:nth-child(4) { height: 75%; animation-delay: -.35s; }
+    /* На паузе полоски замирают: если оверлей решили на паузе не прятать, разница
+       должна быть видна с одного взгляда. */
+    .board.paused .eq span { animation-play-state: paused; }
+
+    @keyframes bounce {
+      0%, 100% { transform: scaleY(.35); }
+      50% { transform: scaleY(1); }
+    }
+
+    .text { min-width: 0; display: flex; flex-direction: column; gap: 2px; }
+
+    .caption {
+      font-size: 12px; letter-spacing: .18em; text-transform: uppercase; opacity: .75;
+      white-space: nowrap;
+    }
+    .caption:empty { display: none; }
+
+    /* Длинное название не сжимается и не обрубается, а едет строкой — как в ленте
+       последних донатов: обрезанное «Бах, Концерт для скрипки с орке…» читать
+       неприятно, а места в углу сцены всё равно нет. */
+    .viewport {
+      overflow: hidden; max-width: 460px;
+      -webkit-mask-image: linear-gradient(90deg, #000 calc(100% - 18px), transparent 100%);
+      mask-image: linear-gradient(90deg, #000 calc(100% - 18px), transparent 100%);
+    }
+    /* Название влезло целиком — ни бега, ни растворяющегося края. */
+    .viewport--still { -webkit-mask-image: none; mask-image: none; }
+
+    .track { display: flex; width: max-content; animation: ticker linear infinite; }
+    .viewport--still .track { animation: none; }
+    .track > span { flex: 0 0 auto; white-space: nowrap; }
+    /* Зазор перед копией — иначе строка склеивается сама с собой. */
+    .track > span + span { padding-left: 48px; }
+
+    @keyframes ticker {
+      from { transform: translateX(0); }
+      to   { transform: translateX(calc(-1 * var(--shift, 0px))); }
+    }
+
+    .name { font-size: 22px; font-weight: 800; line-height: 1.25; }
+    /* Исполнитель, в отличие от названия, не едет, а обрезается: строка тут
+       короткая, а две едущие друг под другом читаются хуже одной. */
+    .artist {
+      font-size: 16px; opacity: .8; white-space: nowrap;
+      max-width: 460px; overflow: hidden; text-overflow: ellipsis;
+    }
+    .artist:empty { display: none; }
+
+    /* ============================================================
+       ТЕМА: default — тёмная панель, золото
+       ============================================================ */
+    #app[data-theme="default"] .board {
+      background: rgba(15, 15, 25, .72); border-radius: 16px;
+      backdrop-filter: blur(4px); box-shadow: 0 6px 24px rgba(0, 0, 0, .45);
+      text-shadow: 0 2px 6px rgba(0, 0, 0, .6);
+    }
+    #app[data-theme="default"] .caption { color: #ffd54a; }
+    #app[data-theme="default"] .eq { color: #7CFC7C; }
+
+    /* ============================================================
+       ТЕМА: slim — только текст, без панели
+       ============================================================ */
+    #app[data-theme="slim"] .board { padding: 0; gap: 12px; }
+    #app[data-theme="slim"] .board,
+    #app[data-theme="slim"] .board * { text-shadow: 0 2px 8px #000; }
+    #app[data-theme="slim"] .cover { width: 54px; height: 54px; }
+    #app[data-theme="slim"] .name { font-size: 20px; }
+    #app[data-theme="slim"] .eq { color: #7CFC7C; }
+
+    /* ============================================================
+       ТЕМА: neon — циан по обсидиану, рамка и скан-линии
+       ============================================================ */
+    #app[data-theme="neon"] .board {
+      position: relative;
+      background: rgba(4, 10, 16, .8);
+      border: 1px solid rgba(80, 230, 255, .5);
+      box-shadow: 0 0 22px rgba(0, 200, 255, .28), inset 0 0 22px rgba(0, 180, 255, .12);
+      font-family: "Consolas", monospace;
+    }
+    /* Скан-линии поверх всего, но кликов на оверлее нет — перехватывать нечего. */
+    #app[data-theme="neon"] .board::after {
+      content: ""; position: absolute; inset: 0; pointer-events: none;
+      background: repeating-linear-gradient(180deg, rgba(0, 0, 0, .3) 0 2px, transparent 2px 4px);
+    }
+    #app[data-theme="neon"] .caption { color: #8ff0ff; text-shadow: 0 0 12px rgba(80, 230, 255, .8); }
+    #app[data-theme="neon"] .name { color: #d9fbff; }
+    #app[data-theme="neon"] .eq { color: #6ff0ff; }
+    #app[data-theme="neon"] .cover { border-radius: 4px; }
+
+    /* ============================================================
+       ТЕМА: hud — капсула, подпись вразрядку
+       ============================================================ */
+    #app[data-theme="hud"] .board {
+      background: rgba(8, 8, 10, .88); border-radius: 999px;
+      border: 1px solid rgba(255, 255, 255, .22);
+      box-shadow: 0 4px 18px rgba(0, 0, 0, .5);
+      font-family: "Consolas", monospace; padding: 8px 22px 8px 10px;
+    }
+    #app[data-theme="hud"] .cover { border-radius: 999px; width: 56px; height: 56px; }
+    #app[data-theme="hud"] .caption { letter-spacing: .3em; }
+    #app[data-theme="hud"] .eq { color: #3cdcf0; }
+    #app[data-theme="hud"] .name { font-size: 20px; }
+
+    .offline {
+      position: fixed; bottom: 6px; right: 12px;
+      font-size: 12px; opacity: .5; display: none;
+    }
+    .offline.show { display: block; }
+  </style>
+</head>
+<body>
+  <div id="app" data-theme="default">
+    <div class="board" id="board">
+      <img class="cover hidden" id="cover" alt="" />
+      <div class="eq"><span></span><span></span><span></span><span></span></div>
+      <div class="text">
+        <div class="caption" id="caption"></div>
+        <div class="viewport viewport--still" id="viewport">
+          <div class="track name" id="name"></div>
+        </div>
+        <div class="artist" id="artist"></div>
+      </div>
+    </div>
+  </div>
+  <div class="offline" id="offline">нет связи</div>
+
+  <script>
+    /*
+     * Что сейчас играет. Слушает /ws/track.
+     *
+     * Страница ничего не решает сама: прятать ли оверлей на паузе, какая тема и
+     * искать ли обложку — это настройки, и приезжают они уже применёнными. Здесь
+     * только показ: появиться, уехать строкой, если название длинное, и исчезнуть,
+     * когда музыки нет.
+     *
+     * Отладка:
+     *   /track?demo       — показать пример, ничего не ожидая от сервера
+     *   /track?theme=neon — перебить тему, не трогая настройки
+     *   /track?speed=80   — подобрать скорость строки, не трогая настройки
+     */
+    const el = (id) => document.getElementById(id);
+    const app = el("app");
+    const THEMES = ["default", "slim", "neon", "hud"];
+
+    const params = new URLSearchParams(location.search);
+    const forcedTheme = THEMES.includes(params.get("theme")) ? params.get("theme") : null;
+    const forcedSpeed = Number(params.get("speed")) > 0 ? Number(params.get("speed")) : null;
+
+    // Последнее состояние держим при себе: карточку надо пересобирать и когда
+    // меняется ширина источника в OBS, а нового сообщения при этом нет.
+    let current = null;
+    let lastSignature = null;
+
+    function render(state) {
+      if (!state || state.type !== "track") return;
+
+      const theme = forcedTheme || (THEMES.includes(state.theme) ? state.theme : "default");
+      if (app.dataset.theme !== theme) app.dataset.theme = theme;
+
+      // Пересобираем только когда трек и правда сменился: иначе бегущая строка
+      // прыгала бы в начало на каждом обновлении соседних оверлеев.
+      const signature = JSON.stringify(state.track) + ":" + state.speed + ":" + theme;
+      if (signature === lastSignature) return;
+      lastSignature = signature;
+
+      current = state;
+      show(state);
+    }
+
+    function show(state) {
+      const board = el("board");
+      const track = state.track;
+
+      if (!track) {
+        board.classList.remove("show");
+        return;
+      }
+
+      el("caption").textContent = state.title || "";
+      // Именно innerText: и название, и исполнитель приходят из плеера, то есть
+      // извне.
+      el("artist").innerText = track.artist || "";
+      board.classList.toggle("paused", track.status === "paused");
+
+      const cover = el("cover");
+      if (track.cover) {
+        cover.src = track.cover;
+        cover.classList.remove("hidden");
+      } else {
+        cover.removeAttribute("src");
+        cover.classList.add("hidden");
+      }
+
+      buildName(track.title || "", state.speed);
+      board.classList.add("show");
+    }
+
+    /*
+     * Название: одной строкой, если влезает, и бегущей — если нет. Копия рядом с
+     * оригиналом нужна, чтобы на стыке круга не было пустоты: строка уезжает ровно
+     * на ширину первой копии с зазором, а её место занимает вторая.
+     */
+    function buildName(text, speed) {
+      const name = el("name");
+      const viewport = el("viewport");
+
+      name.innerHTML = "";
+      name.style.removeProperty("--shift");
+      name.style.animationDuration = "";
+      viewport.classList.add("viewport--still");
+
+      const first = document.createElement("span");
+      first.innerText = text;
+      name.appendChild(first);
+
+      // Ширины меряются после вставки: пока строки нет в документе, она нулевая.
+      if (first.offsetWidth <= viewport.offsetWidth) return;
+
+      viewport.classList.remove("viewport--still");
+      name.appendChild(first.cloneNode(true));
+      // Сдвиг — ширина одной копии вместе с зазором до следующей.
+      const shift = name.scrollWidth / 2;
+      name.style.setProperty("--shift", shift + "px");
+      name.style.animationDuration = (shift / (forcedSpeed || Number(speed) || 40)) + "s";
+    }
+
+    // Обложка — ссылка на чужой сервер: не загрузилась, значит просто прячем.
+    // Битая картинка в кадре хуже, чем её отсутствие.
+    el("cover").addEventListener("error", () => el("cover").classList.add("hidden"));
+
+    // Ширину источника в OBS меняют мышкой при настройке сцены — строку под неё
+    // надо пересобрать, иначе она поедет там, где уже помещается.
+    let resizeTimer = null;
+    addEventListener("resize", () => {
+      clearTimeout(resizeTimer);
+      resizeTimer = setTimeout(() => { if (current) show(current); }, 200);
+    });
+
+    let ws;
+    function connect() {
+      const proto = location.protocol === "https:" ? "wss" : "ws";
+      ws = new WebSocket(proto + "://" + location.host + "/ws/track");
+      ws.onopen = () => el("offline").classList.remove("show");
+      ws.onmessage = (ev) => { try { render(JSON.parse(ev.data)); } catch {} };
+      ws.onclose = () => { el("offline").classList.add("show"); setTimeout(connect, 1500); };
+      ws.onerror = () => { try { ws.close(); } catch {} };
+    }
+
+    if (params.has("demo")) {
+      render({
+        type: "track",
+        title: "Сейчас играет",
+        theme: params.get("theme"),
+        speed: 40,
+        track: { title: "Звезда по имени Солнце", artist: "Кино", status: "playing", cover: null },
+      });
+    } else {
+      connect();
+    }
+  </script>
+</body>
+</html>

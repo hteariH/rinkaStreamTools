@@ -18,6 +18,7 @@
   <nav class="tabs" id="tabs">
     <button class="tab is-active" data-tab="raffle">Розыгрыш</button>
     <button class="tab" data-tab="donations">Донаты</button>
+    <button class="tab" data-tab="music">Музыка</button>
     <button class="tab" data-tab="obs">Источники для OBS</button>
     <button class="tab" data-tab="log">Лог</button>
   </nav>
@@ -373,6 +374,108 @@
           <div class="actions">
             <button class="btn btn--primary" id="t-send">Прогнать донат</button>
           </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ========================================================= МУЗЫКА -->
+    <section class="page" data-page="music">
+      <div class="grid">
+        <div class="card">
+          <h2>Сейчас играет</h2>
+          <label class="switch">
+            <input type="checkbox" id="np-enabled" />
+            <span>Показывать трек на оверлее</span>
+          </label>
+
+          <div class="winner" id="np-now-box">
+            <span class="winner__label" id="np-now-label">Играет</span>
+            <span class="winner__name" id="np-now">—</span>
+          </div>
+
+          <label class="field">
+            <span>Откуда брать трек</span>
+            <select id="np-source">
+              <option value="system">медиасессия Windows — Spotify, браузер, AIMP</option>
+              <option value="file">текстовый файл, который пишет плеер</option>
+            </select>
+          </label>
+          <p class="note">
+            Медиасессия — то же самое, откуда всплывашка громкости знает, что у тебя
+            играет: плеер уже рассказал системе название, и настраивать в нём ничего
+            не надо. Файл нужен, только если плеер в медиасессию не отдаётся —
+            foobar2000, AIMP и Snip умеют писать текущий трек в файл сами.
+          </p>
+
+          <label class="field" id="np-app-field">
+            <span>Фильтр приложения</span>
+            <input type="text" id="np-app" placeholder="например Spotify — пусто значит любое" />
+          </label>
+          <p class="note" id="np-apps"></p>
+
+          <label class="field" id="np-file-field">
+            <span>Файл с треком</span>
+            <input type="text" id="np-file" placeholder="C:\Users\...\nowplaying.txt" />
+          </label>
+          <p class="note" id="np-file-note">
+            Формат — какой пишет плеер: одна строка «Исполнитель — Название» или
+            две, где первая название, а вторая исполнитель. Пустой файл значит тишину.
+          </p>
+
+          <div class="actions">
+            <button class="btn btn--primary" id="np-test">Показать демо-трек</button>
+          </div>
+          <p class="note">
+            Демо-трек нужен, чтобы поставить оверлей на место в OBS, не дожидаясь
+            смены песни. Он висит, пока не сменится настоящий трек.
+          </p>
+        </div>
+
+        <div class="card">
+          <h2>Как выглядит</h2>
+
+          <label class="switch">
+            <input type="checkbox" id="np-cover" />
+            <span>Показывать обложку</span>
+          </label>
+          <p class="note">
+            Свою обложку Spotify наружу не отдаёт, поэтому она ищется по исполнителю,
+            названию и альбому в открытых каталогах (iTunes, затем Deezer) — без
+            ключей и регистрации. Обычно это та же картинка, что в плеере, но у
+            концертников и ремиксов каталог иногда отдаёт другое издание. Наружу
+            уходит только название трека: ни донатов, ни зрителей в этих запросах
+            нет. Не нашлась — оверлей покажет трек без картинки.
+          </p>
+
+          <label class="switch">
+            <input type="checkbox" id="np-pause" />
+            <span>Прятать на паузе</span>
+          </label>
+
+          <div class="field-row">
+            <label class="field">
+              <span>Подпись на оверлее</span>
+              <input type="text" id="np-title" placeholder="Сейчас играет" />
+            </label>
+            <label class="field">
+              <span>Скорость строки, пикс/сек</span>
+              <input type="number" id="np-speed" step="5" min="10" max="400" />
+            </label>
+          </div>
+          <p class="note">
+            Скорость нужна длинным названиям: если название не влезает в источник,
+            оно едет строкой, а короткое просто стоит на месте.
+          </p>
+
+          <label class="field">
+            <span>Тема оверлея</span>
+            <select id="np-theme">
+              <option value="default">default — тёмная панель, золото</option>
+              <option value="slim">slim — только текст, без панели</option>
+              <option value="neon">neon — циан по обсидиану</option>
+              <option value="hud">hud — капсула</option>
+            </select>
+          </label>
         </div>
       </div>
     </section>

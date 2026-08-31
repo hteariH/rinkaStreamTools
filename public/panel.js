@@ -126,6 +126,16 @@ bind("recent-limit", "recent.limit", { type: "number" });
 bind("recent-speed", "recent.speed", { type: "number" });
 bind("recent-theme", "recent.theme");
 
+bind("np-enabled", "nowplaying.enabled", { type: "checkbox" });
+bind("np-source", "nowplaying.source");
+bind("np-app", "nowplaying.appFilter");
+bind("np-file", "nowplaying.filePath");
+bind("np-cover", "nowplaying.cover", { type: "checkbox" });
+bind("np-pause", "nowplaying.hideWhenPaused", { type: "checkbox" });
+bind("np-title", "nowplaying.title");
+bind("np-speed", "nowplaying.speed", { type: "number" });
+bind("np-theme", "nowplaying.theme");
+
 bind("da-enabled", "donationAlerts.enabled", { type: "checkbox" });
 bind("da-url", "donationAlerts.widgetUrl");
 bind("da-rate", "donationAlerts.rate", { type: "number" });
@@ -232,6 +242,13 @@ el("top-reset").addEventListener("click", () => {
 
 el("recent-reset").addEventListener("click", () => {
   if (confirm("Очистить ленту последних донатов?")) send({ type: "recent.reset" });
+});
+
+/* --------------------------------------------------------------- музыка */
+
+el("np-test").addEventListener("click", () => {
+  send({ type: "test.track" });
+  toast("Демо-трек на оверлее");
 });
 
 /* ------------------------------------------------------------- скримеры */
@@ -344,6 +361,7 @@ const STATUS_LABELS = {
   axelchat: "AxelChat",
   donationAlerts: "DonationAlerts",
   donatello: "Donatello",
+  nowplaying: "Трек",
 };
 
 function renderStatuses(status) {
@@ -573,6 +591,43 @@ function renderRecent(recent, config) {
     : "Пока пусто — донаты появятся здесь по мере эфира.";
 }
 
+/**
+ * Что играет — в панели показывается как есть, вместе с паузой: прячет её только
+ * оверлей, а стримеру надо видеть, что музыка вообще доходит.
+ */
+function renderNowPlaying(nowplaying, config) {
+  setChecked(el("np-enabled"), config.nowplaying.enabled);
+  setValue(el("np-source"), config.nowplaying.source);
+  setValue(el("np-app"), config.nowplaying.appFilter);
+  setValue(el("np-file"), config.nowplaying.filePath);
+  setChecked(el("np-cover"), config.nowplaying.cover);
+  setChecked(el("np-pause"), config.nowplaying.hideWhenPaused);
+  setValue(el("np-title"), config.nowplaying.title);
+  setValue(el("np-speed"), config.nowplaying.speed);
+  setValue(el("np-theme"), config.nowplaying.theme);
+
+  // Поля чужого источника только мешают: путь к файлу медиасессии не нужен, а
+  // фильтр приложения файлу не к чему применять.
+  const fromFile = config.nowplaying.source === "file";
+  el("np-app-field").hidden = fromFile;
+  el("np-apps").hidden = fromFile;
+  el("np-file-field").hidden = !fromFile;
+  el("np-file-note").hidden = !fromFile;
+
+  const track = nowplaying?.track || null;
+  const name = track ? [track.artist, track.title].filter(Boolean).join(" — ") : "";
+  el("np-now-box").classList.toggle("show", Boolean(name));
+  el("np-now").textContent = name || "—";
+  el("np-now-label").textContent = track?.status === "paused" ? "На паузе" : "Играет";
+
+  // Id приложений — то, что подставляют в фильтр: угадать их с первого раза
+  // нельзя, у браузеров они выглядят как случайный набор букв.
+  const apps = nowplaying?.apps || [];
+  el("np-apps").textContent = apps.length
+    ? "Сейчас видно: " + apps.join(", ")
+    : "Пока не видно ни одного плеера — включи музыку, и приложения появятся здесь.";
+}
+
 function renderUrls(port) {
   const base = `http://localhost:${port}`;
   const items = [
@@ -580,6 +635,7 @@ function renderUrls(port) {
     ["Цель сбора", "/goal"],
     ["Топ донатеров", "/top"],
     ["Последние донаты", "/recent"],
+    ["Сейчас играет", "/track"],
     ["Алерты донатов", "/alerts"],
     ["Скримеры", "/screamer"],
   ];
@@ -647,6 +703,7 @@ function render(next) {
   renderGoal(next.goal, next.config);
   renderTop(next.top, next.config);
   renderRecent(next.recent, next.config);
+  renderNowPlaying(next.nowplaying, next.config);
   renderUrls(next.config.port);
   if (next.log) renderLog(next.log);
 }
