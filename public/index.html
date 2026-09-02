@@ -18,6 +18,7 @@
   <nav class="tabs" id="tabs">
     <button class="tab is-active" data-tab="raffle">Розыгрыш</button>
     <button class="tab" data-tab="donations">Донаты</button>
+    <button class="tab" data-tab="poll">Опрос</button>
     <button class="tab" data-tab="music">Музыка</button>
     <button class="tab" data-tab="obs">Источники для OBS</button>
     <button class="tab" data-tab="log">Лог</button>
@@ -541,6 +542,90 @@
           </label>
           <div class="actions">
             <button class="btn btn--primary" id="t-send">Прогнать донат</button>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ========================================================== ОПРОС -->
+    <section class="page" data-page="poll">
+      <div class="grid">
+        <div class="card">
+          <h2>Опрос в чате</h2>
+          <p class="note">
+            Зрители голосуют номером варианта в том же чате, который уже читается для
+            розыгрыша. Один зритель — один голос.
+          </p>
+
+          <label class="field">
+            <span>Вопрос</span>
+            <input type="text" id="p-question" placeholder="Во что играем после перерыва?" />
+          </label>
+
+          <label class="field">
+            <span>Варианты — по одному в строке, не больше девяти</span>
+            <textarea id="p-options" rows="5" placeholder="Doom&#10;Factorio&#10;Ещё один разговорный"></textarea>
+          </label>
+
+          <div class="field-row">
+            <label class="field">
+              <span>Сколько секунд, 0 — без отсчёта</span>
+              <input type="number" id="p-seconds" step="5" min="0" max="3600" />
+            </label>
+            <label class="field">
+              <span>Команда перед номером</span>
+              <input type="text" id="p-command" placeholder="пусто — голосуют цифрой" />
+            </label>
+          </div>
+
+          <div class="actions">
+            <button class="btn btn--primary" id="p-start">Запустить</button>
+            <button class="btn" id="p-stop">Закрыть</button>
+            <button class="btn btn--danger" id="p-clear">Убрать с экрана</button>
+          </div>
+          <p class="note">
+            «Закрыть» останавливает приём голосов, но итоги остаются на оверлее — их
+            обычно обсуждают уже после отсчёта. «Убрать с экрана» прячет опрос совсем.
+          </p>
+        </div>
+
+        <div class="card">
+          <h2>Как идёт голосование</h2>
+          <div class="winner" id="p-state-box">
+            <span class="winner__label" id="p-state-label">Идёт голосование</span>
+            <span class="winner__name" id="p-state">—</span>
+          </div>
+          <ul class="top-list" id="p-results"></ul>
+          <p class="note" id="p-note"></p>
+
+          <label class="switch mt-sm">
+            <input type="checkbox" id="p-change" />
+            <span>Разрешить менять голос</span>
+          </label>
+          <p class="note">
+            Пока голосование открыто, зритель может переголосовать: промахнулся мимо
+            цифры — исправится. Выключено — засчитывается первый голос.
+          </p>
+
+          <label class="switch">
+            <input type="checkbox" id="p-percent" />
+            <span>Показывать проценты</span>
+          </label>
+
+          <div class="field-row">
+            <label class="field">
+              <span>Подпись на оверлее</span>
+              <input type="text" id="p-title" placeholder="Опрос" />
+            </label>
+            <label class="field">
+              <span>Тема оверлея</span>
+              <select id="p-theme">
+                <option value="default">default — тёмная панель, золото</option>
+                <option value="slim">slim — только текст, без панели</option>
+                <option value="neon">neon — циан по обсидиану</option>
+                <option value="hud">hud — капсула</option>
+              </select>
+            </label>
           </div>
         </div>
       </div>

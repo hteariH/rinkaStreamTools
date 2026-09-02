@@ -146,6 +146,13 @@ bind("dt-enabled", "donatello.enabled", { type: "checkbox" });
 bind("dt-url", "donatello.widgetUrl");
 bind("dt-rate", "donatello.rate", { type: "number" });
 
+bind("p-command", "poll.command");
+bind("p-change", "poll.allowChange", { type: "checkbox" });
+bind("p-percent", "poll.showPercent", { type: "checkbox" });
+bind("p-title", "poll.title");
+bind("p-theme", "poll.theme");
+bind("p-seconds", "poll.seconds", { type: "number" });
+
 bind("c-name", "colors.name", { type: "color" });
 bind("c-amount", "colors.amount", { type: "color" });
 
@@ -311,6 +318,30 @@ el("recent-add").addEventListener("click", () => {
   });
   for (const id of ["recent-add-name", "recent-add-amount", "recent-add-message"]) el(id).value = "";
 });
+
+/* ---------------------------------------------------------------- опрос */
+
+el("p-start").addEventListener("click", () => {
+  const options = el("p-options").value
+    .split("\n")
+    .map((line) => line.trim())
+    .filter(Boolean);
+
+  if (options.length < 2) {
+    toast("Нужно хотя бы два варианта, по одному в строке", "warn");
+    return;
+  }
+
+  send({
+    type: "poll.start",
+    question: el("p-question").value.trim(),
+    options,
+    seconds: Number(el("p-seconds").value) || 0,
+  });
+});
+
+el("p-stop").addEventListener("click", () => send({ type: "poll.stop" }));
+el("p-clear").addEventListener("click", () => send({ type: "poll.clear" }));
 
 /* ---------------------------------------------------------------- цвета */
 
@@ -988,6 +1019,40 @@ function renderColors(config) {
   el("c-note").textContent = `Сейчас: ${what("name", "ник")}, ${what("amount", "сумма")}.`;
 }
 
+/**
+ * Ход голосования. Вопрос и варианты в полях не трогаем: стример может набирать
+ * следующий опрос, пока идёт текущий.
+ */
+function renderPoll(poll, config) {
+  setValue(el("p-command"), config.poll.command);
+  setValue(el("p-title"), config.poll.title);
+  setValue(el("p-theme"), config.poll.theme);
+  setValue(el("p-seconds"), config.poll.seconds);
+  setChecked(el("p-change"), config.poll.allowChange);
+  setChecked(el("p-percent"), config.poll.showPercent);
+
+  const running = poll.visible && poll.open;
+  el("p-state-box").classList.toggle("show", poll.visible);
+  el("p-state-label").textContent = running ? "Идёт голосование" : "Голосование закрыто";
+  el("p-state").textContent = poll.question || (poll.visible ? "без вопроса" : "—");
+
+  el("p-results").innerHTML = poll.options
+    .map(
+      (option, index) => `<li>
+        <span class="place">${index + 1}.</span>
+        <span class="who">${escapeHtml(option.text)}</span>
+        <b>${option.votes}${config.poll.showPercent ? ` · ${option.percent}%` : ""}</b>
+      </li>`
+    )
+    .join("");
+
+  el("p-note").textContent = !poll.visible
+    ? "Опроса на экране нет. Набери вопрос с вариантами и жми «Запустить»."
+    : running
+      ? `Голосов: ${poll.total}. ${poll.seconds ? `Осталось ${poll.seconds} с.` : "Отсчёта нет — закрывать вручную."}`
+      : `Итог: ${poll.total} голосов.`;
+}
+
 function renderUrls(port) {
   const base = `http://localhost:${port}`;
   const items = [
@@ -996,6 +1061,7 @@ function renderUrls(port) {
     ["Топ донатеров", "/top"],
     ["Последние донаты", "/recent"],
     ["Сейчас играет", "/track"],
+    ["Опрос в чате", "/poll"],
     ["Алерты донатов", "/alerts"],
     ["Скримеры", "/screamer"],
   ];
@@ -1060,6 +1126,7 @@ function escapeHtml(value) {
 function render(next) {
   state = next;
   renderStatuses(next.status);
+  renderPoll(next.poll, next.config);
   renderColors(next.config);
   renderMedia(next.media);
   renderTts(next.tts, next.config);

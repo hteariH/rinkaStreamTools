@@ -99,6 +99,13 @@ main { padding: 0 24px; max-width: 1240px; margin: 0 auto; }
 
 /* Ключ API — поле того же вида, что остальные: type="password" сюда попадает
    отдельным селектором, под общий он не подходит. */
+textarea {
+  width: 100%; padding: 9px 12px; font: inherit; line-height: 1.4; resize: vertical;
+  background: var(--card-2); color: var(--text);
+  border: 1px solid var(--line); border-radius: 9px;
+}
+textarea:focus { outline: none; border-color: var(--gold); }
+
 input[type="text"], input[type="number"], input[type="password"], select {
   width: 100%; padding: 9px 12px; font: inherit;
   background: var(--card-2); color: var(--text);

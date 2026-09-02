@@ -23,6 +23,14 @@
     "pollIntervalMs": 60000,
     "theme": "default"
   },
+  "poll": {
+    "command": "",
+    "allowChange": true,
+    "seconds": 60,
+    "title": "Опрос",
+    "showPercent": true,
+    "theme": "default"
+  },
   "colors": {
     "name": "",
     "amount": ""

@@ -1,7 +1,7 @@
 // HTTP-сервер статики (панель + оверлеи) и WebSocket-хаб на одном порту.
 //
 // У каждого оверлея свой канал: /ws/raffle, /ws/goal, /ws/top, /ws/recent,
-// /ws/track, /ws/alerts, /ws/screamer, плюс двусторонний /ws/control для панели.
+// /ws/track, /ws/poll, /ws/alerts, /ws/screamer, плюс двусторонний /ws/control.
 // Каналы разведены по пути апгрейда, поэтому оверлей в OBS получает только своё
 // и не парсит чужое.
 
@@ -33,6 +33,7 @@ const ALIASES = {
   "/top": "/overlay/top.html",
   "/recent": "/overlay/recent.html",
   "/track": "/overlay/track.html",
+  "/poll": "/overlay/poll.html",
   "/alerts": "/overlay/alert.html",
   "/screamer": "/overlay/screamer.html",
 };

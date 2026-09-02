@@ -12,6 +12,7 @@ import { PUBLIC_DIR, DONORS_PATH, RECENT_PATH, MEDIA_DIR, DATA_DIR } from "./pat
 import { log } from "./log.js";
 import { saveConfig } from "./config.js";
 import { Raffle } from "./raffle/raffle.js";
+import { Poll } from "./poll/poll.js";
 import { AxelChatClient } from "./raffle/axelchat.js";
 import { DonationAlertsSource } from "./donations/donationalerts.js";
 import { DonatelloSource } from "./donations/donatello.js";
@@ -31,6 +32,11 @@ export class App {
     if (!this.raffle.setTheme(config.raffle.theme)) {
       log.warn("raffle", `неизвестная тема "${config.raffle.theme}", использую default`);
     }
+
+    // Опрос читает тот же чат, что и розыгрыш: отдельного подключения ему не нужно.
+    this.poll = new Poll(config.poll);
+    this.pollTimer = null;
+    this.pollPush = null;
 
     this.axelchat = new AxelChatClient(config.raffle.axelchatUrl);
     this.axelchatStatus = "off";
@@ -81,6 +87,7 @@ export class App {
         "/ws/top": () => this.topSnapshot(),
         "/ws/recent": () => this.recentSnapshot(),
         "/ws/track": () => this.trackSnapshot(),
+        "/ws/poll": () => this.pollSnapshot(),
         // Алерты и скримеры — поток событий, начального состояния у них нет:
         // оверлей, подключившийся после доната, показывать его задним числом не должен.
         "/ws/alerts": () => this.alertsHello(),
@@ -141,6 +148,10 @@ export class App {
     });
 
     this.axelchat.on("message", (msg) => {
+      // Голос за вариант — это обычное сообщение чата, и в розыгрыш оно тоже
+      // может попасть: одно другому не мешает.
+      if (this.poll.vote(msg)) this.pushPollSoon();
+
       const added = this.raffle.tryAdd(msg);
       if (!added) return;
       log.info("raffle", `+ ${added.name} [${added.serviceId}] (всего: ${this.raffle.list().length})`);
@@ -372,6 +383,44 @@ export class App {
     return this.nowPlaying.snapshot(this.config.nowplaying.theme || "default");
   }
 
+  pushPoll() {
+    this.hub.broadcast("/ws/poll", this.pollSnapshot());
+    this.pushControl();
+  }
+
+  /**
+   * Рассылка голосов пачками, а не на каждое сообщение: в живом чате голоса идут
+   * очередью, и обновлять оверлей по разу на зрителя незачем — на экране полосы
+   * всё равно двигаются плавно.
+   */
+  pushPollSoon() {
+    if (this.pollPush) return;
+    this.pollPush = setTimeout(() => {
+      this.pollPush = null;
+      this.pushPoll();
+    }, 300);
+  }
+
+  pollSnapshot() {
+    return this.poll.snapshot(this.config.poll.theme || "default");
+  }
+
+  /** Закрыть голосование, когда выйдет время. Итоги остаются на экране. */
+  schedulePollClose() {
+    clearTimeout(this.pollTimer);
+    this.pollTimer = null;
+
+    const left = this.poll.remaining();
+    if (!this.poll.open || left <= 0) return;
+
+    this.pollTimer = setTimeout(() => {
+      this.pollTimer = null;
+      if (!this.poll.stop()) return;
+      log.info("poll", `голосование закрыто, голосов: ${this.poll.total}`);
+      this.pushPoll();
+    }, left * 1000);
+  }
+
   pushControl() {
     this.hub.broadcast("/ws/control", this.controlState());
   }
@@ -388,6 +437,7 @@ export class App {
       // В панели лента полная и с сообщениями, а не та обрезанная, что едет
       // строкой на оверлее.
       recent: { donations: this.recent.history() },
+      poll: this.pollSnapshot(),
       media: this.mediaFiles,
       // Где лежат настройки и данные: без этого «куда делись мои донаты после
       // обновления» не на что ответить.
@@ -447,6 +497,38 @@ export class App {
         return;
       case "raffle.timer":
         this.handleTimer(message, reply);
+        return;
+      case "poll.start": {
+        if (!this.poll.start({
+          question: message.question,
+          options: message.options,
+          seconds: message.seconds ?? this.config.poll.seconds,
+        })) {
+          reply("Нужны вопрос и хотя бы два варианта", "warn");
+          return;
+        }
+        log.ok("poll", `голосование: ${this.poll.question || "без вопроса"}`);
+        this.schedulePollClose();
+        this.pushPoll();
+        return;
+      }
+      case "poll.stop": {
+        if (!this.poll.stop()) {
+          reply("Голосование и так не идёт", "warn");
+          return;
+        }
+        clearTimeout(this.pollTimer);
+        this.pollTimer = null;
+        log.info("poll", `голосование закрыто, голосов: ${this.poll.total}`);
+        this.pushPoll();
+        return;
+      }
+      case "poll.clear":
+        this.poll.clear();
+        clearTimeout(this.pollTimer);
+        this.pollTimer = null;
+        log.info("poll", "опрос убран с оверлея");
+        this.pushPoll();
         return;
       case "top.remove": {
         if (!this.donors.remove(message.name)) {
@@ -654,6 +736,7 @@ export class App {
       donatello: next.donatello,
     });
     this.nowPlaying.configure(next.nowplaying);
+    this.poll.configure(next.poll);
     this.tts.configure(next.tts);
 
     if (portChanged) log.warn("server", "порт сменится после перезапуска");
@@ -664,6 +747,7 @@ export class App {
     this.pushTop();
     this.pushRecent();
     this.pushTrack();
+    this.pushPoll();
     this.hub.broadcast("/ws/screamer", { type: "hello", opacity: next.screamer.opacity });
   }
 }
