@@ -139,6 +139,7 @@
   <div id="stage"></div>
   <div class="offline" id="offline">нет связи</div>
 
+  <script src="/i18n.js"></script>
   <script>
     /*
      * Оверлей алертов. Слушает /ws/alerts и показывает донаты по одному.
@@ -251,7 +252,7 @@
       }
 
       const headline = node("div", "headline");
-      const donor = node("span", "donor", data.donorName || "Аноним");
+      const donor = node("span", "donor", data.donorName || t("Аноним"));
       const amount = node("span", "amount", fmtAmount(data));
       // Цвета из панели ставятся на сам элемент: тема задаёт их правилом, и
       // перебить его снаружи иначе можно только войной селекторов.
@@ -316,6 +317,7 @@
       ws.onmessage = (ev) => {
         let message;
         try { message = JSON.parse(ev.data); } catch { return; }
+        i18n.setLang(message.lang);
         if (message.type === "hello") { hasSound = Boolean(message.sound); return; }
         if (message.type !== "alert") return;
         queue.push(message);

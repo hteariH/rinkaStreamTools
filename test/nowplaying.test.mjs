@@ -156,3 +156,4 @@ test("обложка, опоздавшая к смене трека, на ове
   assert.equal(service.current.title, "Группа крови");
   assert.equal(service.current.cover, null, "обложка прошлого трека прилипла к новому");
 });
+

@@ -15,6 +15,7 @@
 // ни ников в этих запросах нет.
 
 import { log } from "../log.js";
+import { t } from "../i18n.js";
 
 const TIMEOUT_MS = 5000;
 
@@ -49,7 +50,7 @@ export class Covers {
     } catch (error) {
       // Нет сети — обложек не будет, и ладно. Пишем один раз на трек, а не на
       // каждый опрос: лог панели не должен зарастать этим.
-      log.info("track", `обложка не нашлась: ${error.message}`);
+      log.info("track", t("обложка не нашлась: {error}", { error: error.message }));
     }
 
     this.remember(key, url);

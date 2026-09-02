@@ -1,5 +1,7 @@
 # rinkaStreamTools
 
+[English version](README.md)
+
 [![Проверки](https://github.com/hteariH/rinkaStreamTools/actions/workflows/ci.yml/badge.svg)](https://github.com/hteariH/rinkaStreamTools/actions/workflows/ci.yml)
 [![Релиз](https://img.shields.io/github/v/release/hteariH/rinkaStreamTools)](https://github.com/hteariH/rinkaStreamTools/releases/latest)
 
@@ -11,6 +13,9 @@
 команде в чате, общая цель сбора из нескольких донат-площадок, топ донатеров, лента
 последних донатов, что сейчас играет, алерты донатов и скримеры. Всё поднимается на одном локальном порту — в OBS добавляются обычные
 **Browser Source** с адресами `http://localhost:3777/…`, наружу ничего не торчит.
+
+Интерфейс говорит по-русски и по-английски — язык выбирается в шапке панели, за ним
+следуют оверлеи и лог сервера.
 
 Проект объединяет два прежних: [rinkaRaffle](https://github.com/hteariH/rinkaRaffle)
 (розыгрыш) и rinaDonatesAggragator (сбор донатов). Java-часть второго переписана на
@@ -102,7 +107,7 @@ inkaStreamTools  config.json      <- настройки из панели
 
 **Портативный режим.** Если программу носят с собой (флешка, второй компьютер), положи
 рядом с `rinkaStreamTools.exe` пустую папку `data` — всё будет храниться в ней, а профиль
-не тронется.
+не тронется. Папка `data` внутри `server/` тоже подойдёт, если положить туда.
 
 ## Настройка
 

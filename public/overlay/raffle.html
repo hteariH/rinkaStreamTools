@@ -293,7 +293,7 @@
           <polygon points="50,90 85,28 15,28" stroke-width=".8"/>
         </svg>
       </div>
-      <div class="hint">Пиши <b id="cmd">!хил</b> в чат</div>
+      <div class="hint"><span data-i18n>Пиши</span> <b id="cmd">!хил</b> <span data-i18n>в чат</span></div>
 
       <div class="row row-last" id="last-wrap" style="display:none">
         <svg class="icon" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
@@ -324,6 +324,7 @@
   </div>
   <div class="offline" id="offline">нет связи с сервером…</div>
 
+  <script src="/i18n.js"></script>
   <script>
     const el = (id) => document.getElementById(id);
     const app = el("app");
@@ -433,7 +434,7 @@
     function applyTheme(theme) {
       if (!(theme in LABELS)) theme = "default";
       app.dataset.theme = theme;
-      el("winner-label").textContent = LABELS[theme];
+      el("winner-label").textContent = t(LABELS[theme]);
       setParticles(FX[theme]);
       curTheme = theme;
       if (app.classList.contains("drawn")) retrigger(); // проиграть анимацию победителя в новой теме
@@ -471,7 +472,15 @@
       const proto = location.protocol === "https:" ? "wss" : "ws";
       ws = new WebSocket(`${proto}://${location.host}/ws/raffle`);
       ws.onopen = () => el("offline").classList.remove("show");
-      ws.onmessage = (ev) => { try { render(JSON.parse(ev.data)); } catch {} };
+      ws.onmessage = (ev) => {
+        try {
+          const message = JSON.parse(ev.data);
+          // Язык приезжает с сервера вместе с темой: панель и кадр не должны
+          // говорить на разных языках.
+          i18n.setLang(message.lang);
+          render(message);
+        } catch {}
+      };
       ws.onclose = () => { el("offline").classList.add("show"); setTimeout(connect, 1500); };
       ws.onerror = () => { try { ws.close(); } catch {} };
     }

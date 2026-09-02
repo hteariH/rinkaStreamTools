@@ -13,6 +13,7 @@
 
 import { EventEmitter } from "node:events";
 import { readFile } from "node:fs/promises";
+import { t } from "../i18n.js";
 
 export class FileTrackSource extends EventEmitter {
   constructor(config) {
@@ -61,7 +62,7 @@ export class FileTrackSource extends EventEmitter {
       // Плеер ещё не запускался или файл убрали — в эфире это просто тишина.
       // Пишем один раз на обрыв: опрос идёт раз в секунду, и лог панели иначе
       // забился бы одной и той же строкой.
-      if (this.status !== "error") this.emit("log", `файл не читается: ${error.message}`);
+      if (this.status !== "error") this.emit("log", t("файл не читается: {error}", { error: error.message }));
       this._setStatus("error");
       this.lastRaw = null;
       this.emit("track", null);

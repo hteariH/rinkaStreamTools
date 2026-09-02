@@ -23,14 +23,17 @@ import { Media } from "./media.js";
 import { Tts } from "./tts/service.js";
 import { NowPlaying } from "./nowplaying/nowplaying.js";
 import { tierFor } from "./donations/rules.js";
+import { t, setLang } from "./i18n.js";
 
 export class App {
   constructor(config) {
     this.config = config;
+    // Язык сообщений сервера — тот же, что у панели и оверлеев.
+    setLang(config.language);
 
     this.raffle = new Raffle(config.raffle.command);
     if (!this.raffle.setTheme(config.raffle.theme)) {
-      log.warn("raffle", `неизвестная тема "${config.raffle.theme}", использую default`);
+      log.warn("raffle", t("неизвестная тема «{theme}», использую default", { theme: config.raffle.theme }));
     }
 
     // Опрос читает тот же чат, что и розыгрыш: отдельного подключения ему не нужно.
@@ -52,7 +55,7 @@ export class App {
         { key: "donationAlerts", source: this.donationAlerts, config: config.donationAlerts },
         { key: "donatello", source: this.donatello, config: config.donatello },
       ],
-      (key, error) => log.warn(key, `сумма не обновилась: ${error.message}`)
+      (key, error) => log.warn(key, t("сумма не обновилась: {error}", { error: error.message }))
     );
 
     // Множитель площадки к валюте цели тот же, что у самой цели: иначе гривны с
@@ -82,8 +85,8 @@ export class App {
     this.hub = new Hub(
       config.port,
       {
-        "/ws/raffle": () => this.raffle.snapshot(),
-        "/ws/goal": () => this.goal.snapshot(),
+        "/ws/raffle": () => this.withLang(this.raffle.snapshot()),
+        "/ws/goal": () => this.withLang(this.goal.snapshot()),
         "/ws/top": () => this.topSnapshot(),
         "/ws/recent": () => this.recentSnapshot(),
         "/ws/track": () => this.trackSnapshot(),
@@ -91,7 +94,7 @@ export class App {
         // Алерты и скримеры — поток событий, начального состояния у них нет:
         // оверлей, подключившийся после доната, показывать его задним числом не должен.
         "/ws/alerts": () => this.alertsHello(),
-        "/ws/screamer": () => ({ type: "hello", opacity: this.config.screamer.opacity }),
+        "/ws/screamer": () => ({ type: "hello", opacity: this.config.screamer.opacity, lang: this.config.language }),
         "/ws/control": () => this.controlState(),
       },
       (channel, message, ws) => {
@@ -127,7 +130,7 @@ export class App {
 
     log.on("line", (entry) => this.hub.broadcast("/ws/control", { type: "log", entry }));
 
-    log.ok("server", `панель управления: http://localhost:${this.config.port}/`);
+    log.ok("server", t("панель управления: http://localhost:{port}/", { port: this.config.port }));
   }
 
   // -------------------------------------------------------------- источники
@@ -137,12 +140,12 @@ export class App {
       const was = this.axelchatStatus;
       if (status === "connected") {
         this.axelchatStatus = "on";
-        log.ok("axelchat", `подключено: ${this.config.raffle.axelchatUrl}`);
+        log.ok("axelchat", t("подключено: {url}", { url: this.config.raffle.axelchatUrl }));
       } else if (status === "disconnected" || status.startsWith("error")) {
         this.axelchatStatus = "error";
         // Пока AxelChat не запущен, попытки идут каждые 15 секунд. Пишем об этом
         // один раз на обрыв, иначе лог панели забивается одной и той же строкой.
-        if (was !== "error") log.warn("axelchat", "нет связи, переподключаюсь…");
+        if (was !== "error") log.warn("axelchat", t("нет связи, переподключаюсь…"));
       }
       if (was !== this.axelchatStatus) this.pushControl();
     });
@@ -154,7 +157,7 @@ export class App {
 
       const added = this.raffle.tryAdd(msg);
       if (!added) return;
-      log.info("raffle", `+ ${added.name} [${added.serviceId}] (всего: ${this.raffle.list().length})`);
+      log.info("raffle", t("+ {name} [{service}] (всего: {count})", { name: added.name, service: added.serviceId, count: this.raffle.list().length }));
       this.pushRaffle();
     });
   }
@@ -170,7 +173,7 @@ export class App {
   _wireSource(key, source) {
     source.on("log", (text) => log.info(key, text));
     source.on("status", (status) => {
-      log.info(key, status === "on" ? "подключено" : status === "error" ? "нет связи" : "выключено");
+      log.info(key, t(status === "on" ? "подключено" : status === "error" ? "нет связи" : "выключено"));
       this.pushControl();
     });
     source.on("goal", () => this.pushGoal());
@@ -181,7 +184,11 @@ export class App {
   async onDonation(donation) {
     log.ok(
       donation.source,
-      `донат ${donation.amount} ${donation.currency} от ${donation.donorName || "анонима"}`
+      t("донат {amount} {currency} от {name}", {
+        amount: donation.amount,
+        currency: donation.currency,
+        name: donation.donorName || t("анонима"),
+      })
     );
 
     // Сумму площадки не досчитываем сами, а спрашиваем у неё: в сокет прилетает
@@ -199,14 +206,19 @@ export class App {
 
     const match = tierFor(donation, this.config.alerts.tiers, this.config.screamer.baseCurrency);
     if (!match) {
-      log.info(donation.source, "тир не подошёл — ни алерта, ни скримера");
+      log.info(donation.source, t("тир не подошёл — ни алерта, ни скримера"));
       return;
     }
 
     const { tier, threshold, comparable } = match;
     log.info(
       donation.source,
-      `тир «${tier.name}» (${comparable.amount} ${comparable.currency} ≥ ${threshold})`
+      t("тир «{tier}» ({amount} {currency} ≥ {threshold})", {
+        tier: tier.name,
+        amount: comparable.amount,
+        currency: comparable.currency,
+        threshold,
+      })
     );
 
     // Озвучка ждётся до показа, а не догоняет алерт: голос, приехавший к уже
@@ -221,6 +233,7 @@ export class App {
       tierName: tier.name,
       durationMs: Number(tier.durationMs) || 7000,
       theme: tier.theme || "default",
+      lang: this.config.language,
       colors: this.config.colors,
       volume: clamp01(this.config.alerts.volume, 0.8),
       // Что показать и что сыграть, решает сервер: у него список файлов, и
@@ -254,7 +267,7 @@ export class App {
       durationMs: Number(this.config.screamer.durationMs) || 5000,
       variant,
     });
-    log.info("screamer", `проверка: вариация «${variant}»`);
+    log.info("screamer", t("проверка: вариация «{variant}»", { variant }));
   }
 
   /**
@@ -290,6 +303,7 @@ export class App {
     // Длительность теперь у каждого тира своя и едет вместе с самим алертом.
     return {
       type: "hello",
+      lang: this.config.language,
       sound: existsSync(path.join(PUBLIC_DIR, "alert.mp3")),
     };
   }
@@ -325,9 +339,9 @@ export class App {
       this.autoDrawTimer = null;
       const winner = this.raffle.draw();
       if (!winner) {
-        log.warn("raffle", "отсчёт кончился, но разыгрывать некого");
+        log.warn("raffle", t("отсчёт кончился, но разыгрывать некого"));
       } else {
-        log.ok("raffle", `отсчёт кончился, победитель: ${winner.name}`);
+        log.ok("raffle", t("отсчёт кончился, победитель: {name}", { name: winner.name }));
       }
       this.pushRaffle();
     }, left * 1000);
@@ -336,18 +350,23 @@ export class App {
   // ------------------------------------------------------------- рассылка
 
   pushRaffle() {
-    this.hub.broadcast("/ws/raffle", this.raffle.snapshot());
+    this.hub.broadcast("/ws/raffle", this.withLang(this.raffle.snapshot()));
     this.pushControl();
   }
 
   pushGoal() {
-    this.hub.broadcast("/ws/goal", this.goal.snapshot());
+    this.hub.broadcast("/ws/goal", this.withLang(this.goal.snapshot()));
     this.pushControl();
   }
 
   pushTop() {
     this.hub.broadcast("/ws/top", this.topSnapshot());
     this.pushControl();
+  }
+
+  /** Язык — общий для панели и оверлеев, поэтому едет с каждым снимком. */
+  withLang(snapshot) {
+    return { ...snapshot, lang: this.config.language };
   }
 
   topSnapshot() {
@@ -359,6 +378,7 @@ export class App {
         this.config.top.theme || "default"
       ),
       colors: this.config.colors,
+      lang: this.config.language,
     };
   }
 
@@ -371,6 +391,7 @@ export class App {
     return {
       ...this.recent.snapshot(this.config.recent, this.config.recent.theme || "default"),
       colors: this.config.colors,
+      lang: this.config.language,
     };
   }
 
@@ -380,7 +401,7 @@ export class App {
   }
 
   trackSnapshot() {
-    return this.nowPlaying.snapshot(this.config.nowplaying.theme || "default");
+    return this.withLang(this.nowPlaying.snapshot(this.config.nowplaying.theme || "default"));
   }
 
   pushPoll() {
@@ -402,7 +423,7 @@ export class App {
   }
 
   pollSnapshot() {
-    return this.poll.snapshot(this.config.poll.theme || "default");
+    return this.withLang(this.poll.snapshot(this.config.poll.theme || "default"));
   }
 
   /** Закрыть голосование, когда выйдет время. Итоги остаются на экране. */
@@ -416,7 +437,7 @@ export class App {
     this.pollTimer = setTimeout(() => {
       this.pollTimer = null;
       if (!this.poll.stop()) return;
-      log.info("poll", `голосование закрыто, голосов: ${this.poll.total}`);
+      log.info("poll", t("голосование закрыто, голосов: {total}", { total: this.poll.total }));
       this.pushPoll();
     }, left * 1000);
   }
@@ -469,26 +490,26 @@ export class App {
       case "raffle.draw": {
         const winner = this.raffle.draw();
         if (!winner) {
-          reply(this.raffle.list().length ? "Все участники уже выигрывали" : "Список пуст", "warn");
+          reply(t(this.raffle.list().length ? "Все участники уже выигрывали" : "Список пуст"), "warn");
           return;
         }
-        log.ok("raffle", `победитель: ${winner.name}`);
+        log.ok("raffle", t("победитель: {name}", { name: winner.name }));
         this.pushRaffle();
         return;
       }
       case "raffle.restart":
         this.raffle.restart();
-        log.info("raffle", "список очищен");
+        log.info("raffle", t("список очищен"));
         this.scheduleAutoDraw();
         this.pushRaffle();
         return;
       case "raffle.add": {
         const added = this.raffle.addManual(message.name);
         if (!added) {
-          reply("Пустое имя или такой участник уже есть", "warn");
+          reply(t("Пустое имя или такой участник уже есть"), "warn");
           return;
         }
-        log.info("raffle", `+ ${added.name} (вручную)`);
+        log.info("raffle", t("+ {name} (вручную)", { name: added.name }));
         this.pushRaffle();
         return;
       }
@@ -504,22 +525,22 @@ export class App {
           options: message.options,
           seconds: message.seconds ?? this.config.poll.seconds,
         })) {
-          reply("Нужны вопрос и хотя бы два варианта", "warn");
+          reply(t("Нужны вопрос и хотя бы два варианта"), "warn");
           return;
         }
-        log.ok("poll", `голосование: ${this.poll.question || "без вопроса"}`);
+        log.ok("poll", t("голосование: {question}", { question: this.poll.question || t("без вопроса") }));
         this.schedulePollClose();
         this.pushPoll();
         return;
       }
       case "poll.stop": {
         if (!this.poll.stop()) {
-          reply("Голосование и так не идёт", "warn");
+          reply(t("Голосование и так не идёт"), "warn");
           return;
         }
         clearTimeout(this.pollTimer);
         this.pollTimer = null;
-        log.info("poll", `голосование закрыто, голосов: ${this.poll.total}`);
+        log.info("poll", t("голосование закрыто, голосов: {total}", { total: this.poll.total }));
         this.pushPoll();
         return;
       }
@@ -527,35 +548,35 @@ export class App {
         this.poll.clear();
         clearTimeout(this.pollTimer);
         this.pollTimer = null;
-        log.info("poll", "опрос убран с оверлея");
+        log.info("poll", t("опрос убран с оверлея"));
         this.pushPoll();
         return;
       case "top.remove": {
         if (!this.donors.remove(message.name)) {
-          reply("Такого донатера в таблице нет", "warn");
+          reply(t("Такого донатера в таблице нет"), "warn");
           return;
         }
-        log.info("top", `убран донатер: ${message.name}`);
+        log.info("top", t("убран донатер: {name}", { name: message.name }));
         this.pushTop();
         return;
       }
       case "top.add": {
         const added = this.donors.addManual(message.name, message.amount);
         if (!added) {
-          reply("Нужны имя и сумма больше нуля", "warn");
+          reply(t("Нужны имя и сумма больше нуля"), "warn");
           return;
         }
-        log.info("top", `+ ${added.name}: ${added.total} (вручную)`);
+        log.info("top", t("+ {name}: {total} (вручную)", { name: added.name, total: added.total }));
         this.pushTop();
-        reply(`Добавлено: ${added.name}`, "ok");
+        reply(t("Добавлено: {name}", { name: added.name }), "ok");
         return;
       }
       case "recent.remove": {
         if (!this.recent.remove(message.id)) {
-          reply("Такого доната в ленте нет", "warn");
+          reply(t("Такого доната в ленте нет"), "warn");
           return;
         }
-        log.info("recent", "донат убран из ленты");
+        log.info("recent", t("донат убран из ленты"));
         this.pushRecent();
         return;
       }
@@ -567,17 +588,17 @@ export class App {
           message: message.message,
         });
         if (!added) {
-          reply("Нужна сумма больше нуля", "warn");
+          reply(t("Нужна сумма больше нуля"), "warn");
           return;
         }
-        log.info("recent", `+ ${added.name || "аноним"}: ${added.amount} ${added.currency} (вручную)`);
+        log.info("recent", t("+ {name}: {amount} {currency} (вручную)", { name: added.name || t("анонима"), amount: added.amount, currency: added.currency }));
         this.pushRecent();
-        reply("Добавлено в ленту", "ok");
+        reply(t("Добавлено в ленту"), "ok");
         return;
       }
       case "top.reset":
         this.donors.reset();
-        log.info("top", "таблица донатеров очищена");
+        log.info("top", t("таблица донатеров очищена"));
         this.pushTop();
         return;
       case "test.track": {
@@ -592,7 +613,7 @@ export class App {
             cover: null,
           },
         });
-        log.info("track", "проверка: демо-трек на оверлее");
+        log.info("track", t("проверка: демо-трек на оверлее"));
         return;
       }
       case "data.open": {
@@ -605,7 +626,7 @@ export class App {
         // Проводник возвращает ненулевой код даже когда открылся, поэтому за его
         // выходом не следим.
         spawn("explorer.exe", [DATA_DIR], { detached: true, stdio: "ignore" }).unref();
-        reply("Папка открыта");
+        reply(t("Папка открыта"));
         return;
       }
       case "tts.refresh":
@@ -621,13 +642,13 @@ export class App {
             const parts = [];
             parts.push(
               voices.status === "fulfilled"
-                ? `Голосов: ${this.tts.voices.length}`
-                : `Голоса не пришли: ${voices.reason.message}`
+                ? t("Голосов: {count}", { count: this.tts.voices.length })
+                : t("Голоса не пришли: {error}", { error: voices.reason.message })
             );
             // У офлайнового движка лимита нет вовсе — молчим про него, а не
             // пишем «недоступен», как будто что-то сломалось.
             if (quota.status === "rejected" && this.tts.engineName !== "windows") {
-              parts.push(`остаток лимита недоступен: ${quota.reason.message}`);
+              parts.push(t("остаток лимита недоступен: {error}", { error: quota.reason.message }));
             }
 
             const ok = voices.status === "fulfilled";
@@ -638,19 +659,19 @@ export class App {
         return;
       case "recent.reset":
         this.recent.reset();
-        log.info("recent", "лента последних донатов очищена");
+        log.info("recent", t("лента последних донатов очищена"));
         this.pushRecent();
         return;
       case "goal.refresh":
         this.goal.poll().then(() => {
           this.pushGoal();
-          reply("Суммы обновлены");
+          reply(t("Суммы обновлены"));
         });
         return;
       case "config.save":
         this.applyConfig(message.patch).then(
-          () => reply("Настройки сохранены", "ok"),
-          (error) => reply(`Не сохранилось: ${error.message}`, "warn")
+          () => reply(t("Настройки сохранены"), "ok"),
+          (error) => reply(t("Не сохранилось: {error}", { error: error.message }), "warn")
         );
         return;
       case "test.donation": {
@@ -669,7 +690,7 @@ export class App {
         // Вариация выбрана руками — показываем её саму, мимо тиров и порогов.
         if (message.variant) {
           if (!this.config.screamer.enabled) {
-            reply("Скримеры выключены — включи их выше", "warn");
+            reply(t("Скримеры выключены — включи их выше"), "warn");
             return;
           }
           this.previewScreamer(donation, message.variant);
@@ -680,7 +701,7 @@ export class App {
         return;
       }
       default:
-        reply(`Неизвестная команда: ${message.type}`, "warn");
+        reply(t("Неизвестная команда: {type}", { type: message.type }), "warn");
     }
   }
 
@@ -688,10 +709,10 @@ export class App {
     switch (message.action) {
       case "start": {
         if (!this.raffle.startTimer(message.seconds)) {
-          reply("Некорректное время", "warn");
+          reply(t("Некорректное время"), "warn");
           return;
         }
-        log.info("raffle", `таймер на ${message.seconds} с`);
+        log.info("raffle", t("таймер на {seconds} с", { seconds: message.seconds }));
         break;
       }
       case "pause":
@@ -717,6 +738,7 @@ export class App {
     // Порт меняется только перезапуском: сокеты панели живут на старом.
     const portChanged = next.port !== this.config.port;
     this.config = next;
+    setLang(next.language);
     await saveConfig(next);
 
     if (next.raffle.axelchatUrl !== this.axelchat.url) {
@@ -739,7 +761,7 @@ export class App {
     this.poll.configure(next.poll);
     this.tts.configure(next.tts);
 
-    if (portChanged) log.warn("server", "порт сменится после перезапуска");
+    if (portChanged) log.warn("server", t("порт сменится после перезапуска"));
 
     this.pushRaffle();
     this.pushGoal();

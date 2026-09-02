@@ -11,6 +11,7 @@
 
 import { mkdir, readdir, stat, writeFile, unlink } from "node:fs/promises";
 import path from "node:path";
+import { t } from "./i18n.js";
 
 // Гифка — главный случай, но незачем запрещать остальное: оверлей покажет любую
 // картинку, которую умеет браузер.
@@ -127,8 +128,8 @@ export class Media {
    */
   async save(name, data) {
     const safe = safeName(name);
-    if (!safe) throw new Error("не тот тип файла");
-    if (data.length > MAX_BYTES) throw new Error("файл слишком большой");
+    if (!safe) throw new Error(t("не тот тип файла"));
+    if (data.length > MAX_BYTES) throw new Error(t("файл слишком большой"));
 
     await mkdir(this.dir, { recursive: true });
 

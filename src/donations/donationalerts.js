@@ -10,6 +10,7 @@
 
 import { EventEmitter } from "node:events";
 import WebSocket from "ws";
+import { t } from "../i18n.js";
 
 const WS_ENDPOINT = "wss://centrifugo.donationalerts.com/connection/websocket";
 const SUBSCRIBE_ENDPOINT = "https://www.donationalerts.com/api/v1/centrifuge/subscribe";
@@ -91,7 +92,7 @@ export class DonationAlertsSource extends EventEmitter {
     }
 
     if (!goal || goal.raised_amount === undefined) {
-      throw new Error("в ответе нет raised_amount");
+      throw new Error(t("в ответе нет raised_amount"));
     }
 
     this.amount = Number(goal.raised_amount) || 0;
@@ -104,7 +105,7 @@ export class DonationAlertsSource extends EventEmitter {
 
   _goalId() {
     const match = GOAL_ID_RE.exec(this.config.widgetUrl || "");
-    if (!match) throw new Error("в ссылке на виджет нет id цели (/widget/goal/<id>)");
+    if (!match) throw new Error(t("в ссылке на виджет нет id цели (/widget/goal/<id>)"));
     return match[1];
   }
 
@@ -115,7 +116,7 @@ export class DonationAlertsSource extends EventEmitter {
       headers: { "User-Agent": USER_AGENT },
       signal: AbortSignal.timeout(HTTP_TIMEOUT_MS),
     });
-    if (!response.ok) throw new Error(`страница виджета ответила ${response.status}`);
+    if (!response.ok) throw new Error(t("страница виджета ответила {status}", { status: response.status }));
     const html = await response.text();
 
     const apiToken = find(API_TOKEN_RE, html, "token_widget_streamer");
@@ -135,7 +136,7 @@ export class DonationAlertsSource extends EventEmitter {
       },
       signal: AbortSignal.timeout(HTTP_TIMEOUT_MS),
     });
-    if (!response.ok) throw new Error(`api цели ответило ${response.status}`);
+    if (!response.ok) throw new Error(t("api цели ответило {status}", { status: response.status }));
     const body = await response.json();
     return body?.data ?? null;
   }
@@ -234,7 +235,7 @@ export class DonationAlertsSource extends EventEmitter {
       });
       const body = await response.json();
       if (!Array.isArray(body?.channels)) {
-        throw new Error(`subscribe вернул ${JSON.stringify(body)}`);
+        throw new Error(t("subscribe вернул {body}", { body: JSON.stringify(body) }));
       }
 
       for (const channel of body.channels) {
@@ -303,14 +304,14 @@ export class DonationAlertsSource extends EventEmitter {
 
 function find(pattern, html, what) {
   const match = pattern.exec(html);
-  if (!match) throw new Error(`на странице виджета нет ${what}`);
+  if (!match) throw new Error(t("на странице виджета нет {what}", { what }));
   return match[1];
 }
 
 /** id стримера лежит в поле sub токена Centrifugo — как "User:3719625". */
 function userIdOf(socketToken) {
   const parts = socketToken.split(".");
-  if (parts.length < 2) throw new Error("токен centrifugo не похож на JWT");
+  if (parts.length < 2) throw new Error(t("токен centrifugo не похож на JWT"));
   const payload = Buffer.from(parts[1], "base64url").toString("utf8");
   const match = SUBJECT_RE.exec(payload);
   if (!match) throw new Error("в токене centrifugo нет числового sub");

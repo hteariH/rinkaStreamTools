@@ -146,6 +146,7 @@
   </div>
   <div class="offline" id="offline">нет связи</div>
 
+  <script src="/i18n.js"></script>
   <script>
     /*
      * Топ донатеров. Слушает /ws/top и перерисовывает список целиком.
@@ -234,7 +235,15 @@
       const proto = location.protocol === "https:" ? "wss" : "ws";
       ws = new WebSocket(`${proto}://${location.host}/ws/top`);
       ws.onopen = () => el("offline").classList.remove("show");
-      ws.onmessage = (ev) => { try { render(JSON.parse(ev.data)); } catch {} };
+      ws.onmessage = (ev) => {
+        try {
+          const message = JSON.parse(ev.data);
+          // Язык приезжает с сервера вместе с темой: панель и кадр не должны
+          // говорить на разных языках.
+          i18n.setLang(message.lang);
+          render(message);
+        } catch {}
+      };
       ws.onclose = () => { el("offline").classList.add("show"); setTimeout(connect, 1500); };
       ws.onerror = () => { try { ws.close(); } catch {} };
     }

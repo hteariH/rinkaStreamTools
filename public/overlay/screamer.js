@@ -421,7 +421,7 @@ function connect() {
     const socket = new WebSocket(`${protocol}//${window.location.host}/ws/screamer`);
 
     socket.addEventListener('open', () => {
-        status.innerText = 'Подключено';
+        status.innerText = t('Подключено');
         // В простое оверлей полностью невидим, поэтому убедиться, что он жив,
         // можно только так: открыть /screamer?ping — при подключении мигнёт метка.
         if (params.has('ping')) {
@@ -434,6 +434,7 @@ function connect() {
         const message = JSON.parse(event.data);
         // Прозрачность задаётся в панели управления и приезжает при подключении
         // и при сохранении настроек — перезагружать источник в OBS не нужно.
+        i18n.setLang(message.lang);
         if (message.type === 'hello') {
             applyOpacity(message.opacity);
             return;
@@ -448,14 +449,14 @@ function connect() {
 }
 
 function scheduleReconnect() {
-    status.innerText = 'Переподключение...';
+    status.innerText = t('Переподключение...');
     clearTimeout(reconnectTimer);
     reconnectTimer = setTimeout(connect, 3000);
 }
 
 /** Прогон всех вариаций подряд — чтобы посмотреть их, не дожидаясь донатов. */
 function runDemo() {
-    status.innerText = 'Демонстрация';
+    status.innerText = t('Демонстрация');
     status.classList.add('status--visible');
 
     Object.keys(VARIANTS).forEach((name, index) => {

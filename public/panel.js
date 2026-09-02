@@ -146,6 +146,7 @@ bind("dt-enabled", "donatello.enabled", { type: "checkbox" });
 bind("dt-url", "donatello.widgetUrl");
 bind("dt-rate", "donatello.rate", { type: "number" });
 
+bind("lang", "language");
 bind("p-command", "poll.command");
 bind("p-change", "poll.allowChange", { type: "checkbox" });
 bind("p-percent", "poll.showPercent", { type: "checkbox" });
@@ -194,7 +195,7 @@ el("s-opacity").addEventListener("change", (e) => {
 
 el("r-draw").addEventListener("click", () => send({ type: "raffle.draw" }));
 el("r-restart").addEventListener("click", () => {
-  if (confirm("Очистить список участников и историю выпавших?")) send({ type: "raffle.restart" });
+  if (confirm(t("Очистить список участников и историю выпавших?"))) send({ type: "raffle.restart" });
 });
 el("r-add").addEventListener("click", addParticipant);
 el("r-add-name").addEventListener("keydown", (e) => { if (e.key === "Enter") addParticipant(); });
@@ -221,7 +222,7 @@ el("r-timer-stop").addEventListener("click", () => send({ type: "raffle.timer", 
 function startTimer() {
   const seconds = parseDuration(el("r-timer-value").value);
   if (!seconds) {
-    toast("Не понял время. Примеры: 90, 5m, 2m30s, 1:30", "warn");
+    toast(t("Не понял время. Примеры: 90, 5m, 2m30s, 1:30"), "warn");
     return;
   }
   send({ type: "raffle.timer", action: "start", seconds });
@@ -267,13 +268,13 @@ function fmtTime(seconds) {
 el("g-refresh").addEventListener("click", () => send({ type: "goal.refresh" }));
 
 el("top-reset").addEventListener("click", () => {
-  if (confirm("Очистить таблицу донатеров? Суммы за эфир пропадут.")) {
+  if (confirm(t("Очистить таблицу донатеров? Суммы за эфир пропадут."))) {
     send({ type: "top.reset" });
   }
 });
 
 el("recent-reset").addEventListener("click", () => {
-  if (confirm("Очистить ленту последних донатов?")) send({ type: "recent.reset" });
+  if (confirm(t("Очистить ленту последних донатов?"))) send({ type: "recent.reset" });
 });
 
 /* --------------------------------------------- правка топа и ленты руками */
@@ -281,7 +282,7 @@ el("recent-reset").addEventListener("click", () => {
 el("top-list").addEventListener("click", (event) => {
   const button = event.target.closest(".drop");
   if (!button) return;
-  if (confirm(`Убрать «${button.dataset.name}» из таблицы донатеров?`)) {
+  if (confirm(t("Убрать «{name}» из таблицы донатеров?", { name: button.dataset.name }))) {
     send({ type: "top.remove", name: button.dataset.name });
   }
 });
@@ -295,7 +296,7 @@ el("top-add").addEventListener("click", () => {
   const name = el("top-add-name").value.trim();
   const amount = Number(el("top-add-amount").value);
   if (!name || !(amount > 0)) {
-    toast("Нужны имя и сумма больше нуля", "warn");
+    toast(t("Нужны имя и сумма больше нуля"), "warn");
     return;
   }
   send({ type: "top.add", name, amount });
@@ -306,7 +307,7 @@ el("top-add").addEventListener("click", () => {
 el("recent-add").addEventListener("click", () => {
   const amount = Number(el("recent-add-amount").value);
   if (!(amount > 0)) {
-    toast("Нужна сумма больше нуля", "warn");
+    toast(t("Нужна сумма больше нуля"), "warn");
     return;
   }
   send({
@@ -328,7 +329,7 @@ el("p-start").addEventListener("click", () => {
     .filter(Boolean);
 
   if (options.length < 2) {
-    toast("Нужно хотя бы два варианта, по одному в строке", "warn");
+    toast(t("Нужно хотя бы два варианта, по одному в строке"), "warn");
     return;
   }
 
@@ -354,14 +355,14 @@ el("c-amount-reset").addEventListener("click", () => patchConfig({ colors: { amo
 
 el("np-test").addEventListener("click", () => {
   send({ type: "test.track" });
-  toast("Демо-трек на оверлее");
+  toast(t("Демо-трек на оверлее"));
 });
 
 /* -------------------------------------------------------------- озвучка */
 
 el("tts-refresh").addEventListener("click", () => {
   send({ type: "tts.refresh" });
-  toast("Спрашиваю ElevenLabs…");
+  toast(t("Спрашиваю ElevenLabs…"));
 });
 
 /* ------------------------------------------------------------- скримеры */
@@ -388,10 +389,10 @@ for (const [id, what] of [["m-image", "гифка"], ["m-sound", "звук"]]) {
           body: file,
         });
         const result = await response.json().catch(() => ({}));
-        if (!response.ok) throw new Error(result.error || "не загрузилось");
-        toast(`Добавлено: ${result.name}`, "ok");
+        if (!response.ok) throw new Error(result.error || t("не загрузилось"));
+        toast(t("Добавлено: {name}", { name: result.name }), "ok");
       } catch (error) {
-        toast(`${what} «${file.name}»: ${error.message}`, "warn");
+        toast(`${t(what)} «${file.name}»: ${error.message}`, "warn");
       }
     }
   });
@@ -401,12 +402,12 @@ el("m-list").addEventListener("click", async (event) => {
   const button = event.target.closest(".drop");
   if (!button) return;
   const name = button.dataset.name;
-  if (!confirm(`Убрать «${name}» из папки media?`)) return;
+  if (!confirm(t("Убрать «{name}» из папки media?", { name }))) return;
 
   try {
     const response = await fetch("/media?name=" + encodeURIComponent(name), { method: "DELETE" });
-    if (!response.ok) throw new Error("не удалилось");
-    toast("Файл убран", "ok");
+    if (!response.ok) throw new Error(t("не удалилось"));
+    toast(t("Файл убран"), "ok");
   } catch (error) {
     toast(error.message, "warn");
   }
@@ -524,7 +525,7 @@ el("a-tiers").addEventListener("click", (event) => {
     const code = box.querySelector(".new-code").value.trim().toUpperCase();
     const amount = Number(box.querySelector(".new-amount").value);
     if (!code || !Number.isFinite(amount)) {
-      toast("Нужны код валюты и сумма", "warn");
+      toast(t("Нужны код валюты и сумма"), "warn");
       return;
     }
     patchTiers((tiers) => { tiers[index].minAmounts[code] = amount; });
@@ -542,7 +543,7 @@ el("t-send").addEventListener("click", () => {
     message: el("t-message").value.trim(),
     variant: el("t-variant").value,
   });
-  toast("Тестовый донат отправлен");
+  toast(t("Тестовый донат отправлен"));
 });
 
 /* -------------------------------------------------------------- отрисовка */
@@ -551,12 +552,12 @@ const STATUS_LABELS = {
   axelchat: "AxelChat",
   donationAlerts: "DonationAlerts",
   donatello: "Donatello",
-  nowplaying: "Трек",
+  nowplaying: "Трек", // переводится через t() при отрисовке
 };
 
 function renderStatuses(status) {
   el("statuses").innerHTML = Object.entries(STATUS_LABELS)
-    .map(([key, label]) => `<span class="status" data-state="${status[key] || "off"}">${label}</span>`)
+    .map(([key, label]) => `<span class="status" data-state="${status[key] || "off"}">${t(label)}</span>`)
     .join("");
 }
 
@@ -575,7 +576,7 @@ function renderRaffle(raffle) {
       (person) => `<li class="${person.drawn ? "is-drawn" : ""}">
         <span class="who">${escapeHtml(person.name)}</span>
         <span class="svc">${escapeHtml(person.serviceId)}</span>
-        <button class="drop" data-key="${escapeHtml(person.key)}" title="убрать">×</button>
+        <button class="drop" data-key="${escapeHtml(person.key)}" title="${t("убрать")}">×</button>
       </li>`
     )
     .join("");
@@ -590,12 +591,12 @@ function applyTimer(endsAt, pausedRemaining) {
 
   if (typeof pausedRemaining === "number" && pausedRemaining > 0) {
     node.classList.remove("off");
-    node.textContent = `${fmtTime(pausedRemaining)} — пауза`;
+    node.textContent = `${fmtTime(pausedRemaining)} — ${t("пауза")}`;
     return;
   }
   if (typeof endsAt !== "number" || endsAt <= 0) {
     node.classList.add("off");
-    node.textContent = "выключен";
+    node.textContent = t("выключен");
     return;
   }
 
@@ -613,13 +614,13 @@ function renderGoal(goal, config) {
 
   const rows = Object.entries(goal.sources).map(([key, info]) => {
     const label = STATUS_LABELS[key] || key;
-    if (!info.enabled) return `<div><span>${label}</span><b>выключено</b></div>`;
+    if (!info.enabled) return `<div><span>${label}</span><b>${t("выключено")}</b></div>`;
     const own = info.currency && info.currency !== goal.currency
       ? ` (${fmtMoney(info.amount)} ${info.currency})`
       : "";
     return `<div><span>${label}</span><b>${fmtMoney(info.converted)} ${goal.currency}${own}</b></div>`;
   });
-  rows.push(`<div><span>Вручную</span><b>${fmtMoney(goal.manualOffset)} ${goal.currency}</b></div>`);
+  rows.push(`<div><span>${t("Вручную")}</span><b>${fmtMoney(goal.manualOffset)} ${goal.currency}</b></div>`);
   el("g-breakdown").innerHTML = rows.join("");
 
   setValue(el("g-title"), config.goal.title);
@@ -728,10 +729,10 @@ function mediaPickerHtml(tier, kind, label, library) {
     ? chosen
         .map(
           (name) => `<span class="chip">${escapeHtml(name)}<button class="chip__drop"
-            data-kind="${kind}" data-name="${escapeHtml(name)}" title="убрать">×</button></span>`
+            data-kind="${kind}" data-name="${escapeHtml(name)}" title="${t("убрать")}">×</button></span>`
         )
         .join("")
-    : `<span class="chip chip--empty">пусто</span>`;
+    : `<span class="chip chip--empty">${t("пусто")}</span>`;
 
   const free = library[kind].filter((name) => !chosen.includes(name));
   const options = free.map((name) => `<option value="${escapeHtml(name)}">${escapeHtml(name)}</option>`).join("");
@@ -740,7 +741,7 @@ function mediaPickerHtml(tier, kind, label, library) {
     <span class="picker__label">${label}</span>
     <div class="chips">${chips}</div>
     <select data-add="${kind}" ${library[kind].length ? "" : "disabled"}>
-      <option value="">${library[kind].length ? (free.length ? "добавить…" : "все уже выбраны") : "файлов нет"}</option>
+      <option value="">${library[kind].length ? (free.length ? t("добавить…") : t("все уже выбраны")) : t("файлов нет")}</option>
       ${options}
     </select>
   </div>`;
@@ -758,7 +759,7 @@ function tierHtml(tier, index, library) {
     (code) => `<div class="threshold">
       <span class="code">${escapeHtml(code)}</span>
       <input type="number" step="0.01" min="0" data-code="${escapeHtml(code)}" />
-      <button class="btn btn--ghost drop" data-code="${escapeHtml(code)}">убрать</button>
+      <button class="btn btn--ghost drop" data-code="${escapeHtml(code)}">${t("убрать")}</button>
     </div>`
   ).join("");
 
@@ -766,7 +767,7 @@ function tierHtml(tier, index, library) {
     <div class="tier__head">
       <input type="text" class="tier__name" data-field="name" />
       <label class="tier__dur">
-        <span>сек</span>
+        <span>${t("сек")}</span>
         <input type="number" step="0.5" min="1" data-field="duration" />
       </label>
     </div>
@@ -774,15 +775,15 @@ function tierHtml(tier, index, library) {
       ${toggles}
       <label class="switch switch--sm switch--scream">
         <input type="checkbox" data-field="screamer" />
-        <span>Скример</span>
+        <span>${t("Скример")}</span>
       </label>
       <label class="switch switch--sm">
         <input type="checkbox" data-field="speak" />
-        <span>Читать сообщение</span>
+        <span>${t("Читать сообщение")}</span>
       </label>
     </div>
     <label class="tier__theme">
-      <span>Тема</span>
+      <span>${t("Тема")}</span>
       <select data-field="theme">
         ${TIER_THEMES.map(([value, label]) => `<option value="${value}">${label}</option>`).join("")}
       </select>
@@ -790,9 +791,9 @@ function tierHtml(tier, index, library) {
     ${MEDIA_KINDS.map(([kind, label]) => mediaPickerHtml(tier, kind, label, library)).join("")}
     <div class="tier__thresholds">${thresholds}</div>
     <div class="actions tier__add">
-      <input type="text" class="inline-input inline-input--short new-code" placeholder="код" />
-      <input type="number" class="inline-input inline-input--short new-amount" placeholder="сумма" />
-      <button class="btn btn--ghost add">Добавить валюту</button>
+      <input type="text" class="inline-input inline-input--short new-code" placeholder="${t("код")}" />
+      <input type="number" class="inline-input inline-input--short new-amount" placeholder="${t("сумма")}" />
+      <button class="btn btn--ghost add">${t("Добавить валюту")}</button>
     </div>
   </div>`;
 }
@@ -811,20 +812,20 @@ function renderTop(top, config) {
             <span class="who">${escapeHtml(donor.name)}</span>
             <span class="svc">${donor.count}&nbsp;×</span>
             <b>${fmtMoney(donor.total)} ${escapeHtml(top.currency)}</b>
-            <button class="drop" data-name="${escapeHtml(donor.name)}" title="убрать">×</button>
+            <button class="drop" data-name="${escapeHtml(donor.name)}" title="${t("убрать")}">×</button>
           </li>`
         )
         .join("")
     : "";
 
   const parts = [];
-  if (!top.totalDonors) parts.push("Пока никого — донаты появятся здесь по мере эфира.");
+  if (!top.totalDonors) parts.push(t("Пока никого — донаты появятся здесь по мере эфира."));
   if (top.totalDonors > top.donors.length) {
-    parts.push(`На оверлее видно ${top.donors.length} из ${top.totalDonors}; здесь список целиком.`);
+    parts.push(t("На оверлее видно {shown} из {all}; здесь список целиком.", { shown: top.donors.length, all: top.totalDonors }));
   }
   if (top.anonymous.count > 0) {
     parts.push(
-      `Анонимных донатов: ${top.anonymous.count} на ${fmtMoney(top.anonymous.total)} ${top.currency}.`
+      t("Анонимных донатов: {count} на {sum} {currency}.", { count: top.anonymous.count, sum: fmtMoney(top.anonymous.total), currency: top.currency })
     );
   }
   el("top-note").textContent = parts.join(" ");
@@ -842,18 +843,18 @@ function renderRecent(recent, config) {
   el("recent-list").innerHTML = recent.donations
     .map(
       (donation) => `<li>
-        <span class="who">${escapeHtml(donation.name || "Аноним")}</span>
+        <span class="who">${escapeHtml(donation.name || t("Аноним"))}</span>
         <b>${fmtMoney(donation.amount)} ${escapeHtml(donation.currency)}</b>
         <span class="at">${new Date(donation.at).toLocaleTimeString("ru-RU")}</span>
         ${donation.message ? `<span class="msg">${escapeHtml(donation.message)}</span>` : ""}
-        <button class="drop" data-id="${escapeHtml(donation.id)}" title="убрать">×</button>
+        <button class="drop" data-id="${escapeHtml(donation.id)}" title="${t("убрать")}">×</button>
       </li>`
     )
     .join("");
 
   el("recent-note").textContent = recent.donations.length
     ? ""
-    : "Пока пусто — донаты появятся здесь по мере эфира.";
+    : t("Пока пусто — донаты появятся здесь по мере эфира.");
 }
 
 /**
@@ -883,14 +884,14 @@ function renderNowPlaying(nowplaying, config) {
   const name = track ? [track.artist, track.title].filter(Boolean).join(" — ") : "";
   el("np-now-box").classList.toggle("show", Boolean(name));
   el("np-now").textContent = name || "—";
-  el("np-now-label").textContent = track?.status === "paused" ? "На паузе" : "Играет";
+  el("np-now-label").textContent = t(track?.status === "paused" ? "На паузе" : "Играет");
 
   // Id приложений — то, что подставляют в фильтр: угадать их с первого раза
   // нельзя, у браузеров они выглядят как случайный набор букв.
   const apps = nowplaying?.apps || [];
   el("np-apps").textContent = apps.length
-    ? "Сейчас видно: " + apps.join(", ")
-    : "Пока не видно ни одного плеера — включи музыку, и приложения появятся здесь.";
+    ? t("Сейчас видно: {apps}", { apps: apps.join(", ") })
+    : t("Пока не видно ни одного плеера — включи музыку, и приложения появятся здесь.");
 }
 
 /** Медиатека: что лежит в папке media, с размерами и кнопкой убрать. */
@@ -903,12 +904,12 @@ function renderMedia(media) {
             (file) => `<li>
               <span class="who">${escapeHtml(file.name)}</span>
               <span class="svc">${fmtSize(file.size)}</span>
-              <button class="drop" data-name="${escapeHtml(file.name)}" title="убрать">×</button>
+              <button class="drop" data-name="${escapeHtml(file.name)}" title="${t("убрать")}">×</button>
             </li>`
           )
           .join("")
-      : `<li class="media__empty">пока пусто</li>`;
-    return `<div class="media__group"><h3>${label}</h3><ul class="feed">${rows}</ul></div>`;
+      : `<li class="media__empty">${t("Пока пусто")}</li>`;
+    return `<div class="media__group"><h3>${t(label)}</h3><ul class="feed">${rows}</ul></div>`;
   });
 
   el("m-list").innerHTML = groups.join("");
@@ -916,9 +917,9 @@ function renderMedia(media) {
 
 function fmtSize(bytes) {
   const size = Number(bytes) || 0;
-  if (size < 1024) return `${size} Б`;
-  if (size < 1024 * 1024) return `${Math.round(size / 1024)} КБ`;
-  return `${(size / 1024 / 1024).toFixed(1)} МБ`;
+  if (size < 1024) return `${size} ${t("Б")}`;
+  if (size < 1024 * 1024) return `${Math.round(size / 1024)} ${t("КБ")}`;
+  return `${(size / 1024 / 1024).toFixed(1)} ${t("МБ")}`;
 }
 
 /**
@@ -953,7 +954,7 @@ function renderWindowsVoices(voices, config, active) {
   if (select.dataset.shape !== shape) {
     select.dataset.shape = shape;
     select.innerHTML =
-      `<option value="">голос по умолчанию</option>` +
+      `<option value="">${t("голос по умолчанию")}</option>` +
       voices
         .map((voice) => `<option value="${escapeHtml(voice.id)}">${escapeHtml(voice.name)}</option>`)
         .join("");
@@ -969,12 +970,10 @@ function renderWindowsVoices(voices, config, active) {
    */
   const hasRussian = voices.some((voice) => String(voice.culture || "").toLowerCase().startsWith("ru"));
   el("tts-win-note").textContent = !voices.length
-    ? "Нажми «Обновить голоса» — список придёт из Windows."
+    ? t("Нажми «Обновить голоса» — список придёт из Windows.")
     : hasRussian
-      ? "Русский голос найден — сообщения будут читаться."
-      : "Русских голосов в списке нет: такой голос прочитает русское сообщение молча." +
-        " Поставить: Параметры → Время и язык → Речь → Добавить голоса → Русский." +
-        " Появиться в этом списке должен голос с пометкой ru-RU.";
+      ? t("Русский голос найден — сообщения будут читаться.")
+      : t("Русских голосов в списке нет: такой голос прочитает русское сообщение молча. Поставить: Параметры → Время и язык → Речь → Добавить голоса → Русский. Появиться в этом списке должен голос с пометкой ru-RU.");
 }
 
 function renderElevenVoices(voices, config) {
@@ -990,18 +989,18 @@ function renderElevenVoices(voices, config) {
 }
 
 function quotaText(tts) {
-  if (!tts?.hasKey) return "Ключ не задан — облачной озвучки не будет.";
+  if (!tts?.hasKey) return t("Ключ не задан — облачной озвучки не будет.");
   // Поле ключа после перезагрузки панели пустое: обратно он не приходит вовсе.
   // Без этой строчки выглядело бы так, будто ключ потерялся.
-  if (!tts.quota) return "Ключ сохранён на сервере (в поле он не показывается). Остаток лимита пока неизвестен — нажми «Обновить голоса».";
+  if (!tts.quota) return t("Ключ сохранён на сервере (в поле он не показывается). Остаток лимита пока неизвестен — нажми «Обновить голоса».");
 
   const { used, limit, resetsAt, plan } = tts.quota;
   const left = Math.max(0, limit - used);
   const when = resetsAt ? new Date(resetsAt).toLocaleDateString("ru-RU") : null;
   return [
-    `План ${plan || "?"}: потрачено ${used} из ${limit} символов, осталось ${left}.`,
-    when ? `Лимит обновится ${when}.` : "",
-    limit ? `Это примерно ${Math.floor(left / 120)} сообщений по 120 символов.` : "",
+    t("План {plan}: потрачено {used} из {limit} символов, осталось {left}.", { plan: plan || "?", used, limit, left }),
+    when ? t("Лимит обновится {date}.", { date: when }) : "",
+    limit ? t("Это примерно {count} сообщений по 120 символов.", { count: Math.floor(left / 120) }) : "",
   ].filter(Boolean).join(" ");
 }
 
@@ -1015,8 +1014,8 @@ function renderColors(config) {
   setValue(el("c-name"), config.colors.name || THEME_COLORS.name);
   setValue(el("c-amount"), config.colors.amount || THEME_COLORS.amount);
 
-  const what = (key, label) => `${label} — ${config.colors[key] ? "свой цвет" : "как в теме"}`;
-  el("c-note").textContent = `Сейчас: ${what("name", "ник")}, ${what("amount", "сумма")}.`;
+  const what = (key, label) => `${t(label)} — ${config.colors[key] ? t("свой цвет") : t("как в теме")}`;
+  el("c-note").textContent = t("Сейчас: {name}, {amount}.", { name: what("name", "ник"), amount: what("amount", "сумма") });
 }
 
 /**
@@ -1033,8 +1032,8 @@ function renderPoll(poll, config) {
 
   const running = poll.visible && poll.open;
   el("p-state-box").classList.toggle("show", poll.visible);
-  el("p-state-label").textContent = running ? "Идёт голосование" : "Голосование закрыто";
-  el("p-state").textContent = poll.question || (poll.visible ? "без вопроса" : "—");
+  el("p-state-label").textContent = t(running ? "Идёт голосование" : "Голосование закрыто");
+  el("p-state").textContent = poll.question || (poll.visible ? t("без вопроса") : "—");
 
   el("p-results").innerHTML = poll.options
     .map(
@@ -1047,10 +1046,13 @@ function renderPoll(poll, config) {
     .join("");
 
   el("p-note").textContent = !poll.visible
-    ? "Опроса на экране нет. Набери вопрос с вариантами и жми «Запустить»."
+    ? t("Опроса на экране нет. Набери вопрос с вариантами и жми «Запустить».")
     : running
-      ? `Голосов: ${poll.total}. ${poll.seconds ? `Осталось ${poll.seconds} с.` : "Отсчёта нет — закрывать вручную."}`
-      : `Итог: ${poll.total} голосов.`;
+      ? t("Голосов: {total}. {left}", {
+          total: poll.total,
+          left: poll.seconds ? t("Осталось {seconds} с.", { seconds: poll.seconds }) : t("Отсчёта нет — закрывать вручную."),
+        })
+      : t("Итог: {total} голосов.", { total: poll.total });
 }
 
 function renderUrls(port) {
@@ -1068,10 +1070,10 @@ function renderUrls(port) {
   el("obs-urls").innerHTML = items
     .map(
       ([what, path]) => `<li>
-        <span class="what">${what}</span>
+        <span class="what">${t(what)}</span>
         <span class="url">${base}${path}</span>
-        <button class="btn btn--ghost copy" data-url="${base}${path}">Копировать</button>
-        <a class="btn btn--ghost" href="${path}" target="_blank" rel="noopener">Открыть</a>
+        <button class="btn btn--ghost copy" data-url="${base}${path}">${t("Копировать")}</button>
+        <a class="btn btn--ghost" href="${path}" target="_blank" rel="noopener">${t("Открыть")}</a>
       </li>`
     )
     .join("");
@@ -1083,8 +1085,8 @@ el("obs-urls").addEventListener("click", (event) => {
   const button = event.target.closest(".copy");
   if (!button) return;
   navigator.clipboard.writeText(button.dataset.url).then(
-    () => toast("Адрес скопирован", "ok"),
-    () => toast("Буфер обмена недоступен — скопируй вручную", "warn")
+    () => toast(t("Адрес скопирован"), "ok"),
+    () => toast(t("Буфер обмена недоступен — скопируй вручную"), "warn")
   );
 });
 
@@ -1125,6 +1127,12 @@ function escapeHtml(value) {
 
 function render(next) {
   state = next;
+  // Язык приезжает с сервера: на нём же говорят оверлеи в OBS и лог, и держать
+  // его отдельно в браузере значило бы получить панель на одном языке, а кадр на
+  // другом. Меняем до отрисовки — дальше всё соберётся уже на нужном.
+  i18n.setLang(next.config.language);
+  setValue(el("lang"), next.config.language);
+
   renderStatuses(next.status);
   renderPoll(next.poll, next.config);
   renderColors(next.config);

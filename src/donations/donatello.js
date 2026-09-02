@@ -10,6 +10,7 @@
 
 import { EventEmitter } from "node:events";
 import WebSocket from "ws";
+import { t } from "../i18n.js";
 
 const SOCKET_URL = "wss://donatello.to/socket.io/?EIO=4&transport=websocket&userId=";
 const RECONNECT_MS = 15000;
@@ -70,13 +71,13 @@ export class DonatelloSource extends EventEmitter {
 
     const info = await this._info();
     if (!info || info.donatedAmount === undefined) {
-      throw new Error("в ответе нет donatedAmount");
+      throw new Error(t("в ответе нет donatedAmount"));
     }
 
     // donatedAmount приходит строкой, иногда с запятой вместо точки.
     const raw = String(info.donatedAmount).replace(",", ".").trim();
     const amount = Number(raw);
-    if (!Number.isFinite(amount)) throw new Error(`не разобрал сумму "${raw}"`);
+    if (!Number.isFinite(amount)) throw new Error(t("не разобрал сумму «{raw}»", { raw }));
 
     this.amount = amount;
     this.currency = info.widgetCurrency || this.currency || DEFAULT_CURRENCY;
@@ -91,7 +92,7 @@ export class DonatelloSource extends EventEmitter {
       headers: { "Accept": "application/json" },
       signal: AbortSignal.timeout(HTTP_TIMEOUT_MS),
     });
-    if (!response.ok) throw new Error(`/info ответил ${response.status}`);
+    if (!response.ok) throw new Error(t("/info ответил {status}", { status: response.status }));
     return response.json();
   }
 
@@ -101,7 +102,7 @@ export class DonatelloSource extends EventEmitter {
     const response = await fetch(this.config.widgetUrl, {
       signal: AbortSignal.timeout(HTTP_TIMEOUT_MS),
     });
-    if (!response.ok) throw new Error(`страница виджета ответила ${response.status}`);
+    if (!response.ok) throw new Error(t("страница виджета ответила {status}", { status: response.status }));
     const html = await response.text();
 
     this.identity = {
@@ -212,6 +213,6 @@ export class DonatelloSource extends EventEmitter {
 
 function find(pattern, html, what) {
   const match = pattern.exec(html);
-  if (!match) throw new Error(`на странице виджета нет ${what}`);
+  if (!match) throw new Error(t("на странице виджета нет {what}", { what }));
   return match[1];
 }

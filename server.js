@@ -8,6 +8,7 @@ import { migrateData } from "./src/data.js";
 import { BASE_DIR, CONFIG_PATH, DATA_DIR, PUBLIC_DIR } from "./src/paths.js";
 import { log } from "./src/log.js";
 import { App } from "./src/app.js";
+import { t } from "./src/i18n.js";
 
 /**
  * Когда сервер запущен окном-приложением, оно передаёт свой pid. Закрылось
@@ -26,7 +27,7 @@ function watchParent() {
     } catch (error) {
       // EPERM значит, что процесс жив, просто чужой — это не повод выходить.
       if (error.code !== "ESRCH") return;
-      log.info("server", "приложение закрылось — выхожу");
+      log.info("server", t("приложение закрылось — выхожу"));
       process.exit(0);
     }
   }, 5000);
@@ -47,7 +48,7 @@ async function main() {
   // бы как потеря настроек и всех донатов за эфиры.
   const moved = await migrateData(BASE_DIR, DATA_DIR);
   if (moved.length) {
-    log.ok("server", `настройки и данные перенесены в ${DATA_DIR}: ${moved.join(", ")}`);
+    log.ok("server", t("настройки и данные перенесены в {dir}: {what}", { dir: DATA_DIR, what: moved.join(", ") }));
   }
 
   const config = await loadConfig();
@@ -59,16 +60,30 @@ async function main() {
 
   watchParent();
 
+  /*
+   * Приветствие в консоли: его видит тот, кто запустил сервер руками, — значит
+   * оно тоже на языке из настроек. Список адресов собирается из одного массива,
+   * чтобы новый оверлей не забыли дописать сюда.
+   */
+  const overlays = [
+    ["розыгрыш", "raffle"],
+    ["цель сбора", "goal"],
+    ["топ донатеров", "top"],
+    ["последние донаты", "recent"],
+    ["сейчас играет", "track"],
+    ["опрос в чате", "poll"],
+    ["алерты донатов", "alerts"],
+    ["скримеры", "screamer"],
+  ];
+  const width = Math.max(...overlays.map(([name]) => t(name).length));
+
   console.log("");
-  console.log(`  Панель управления   http://localhost:${config.port}/`);
-  console.log(`  Данные и настройки  ${DATA_DIR}`);
-  console.log("  Источники для OBS (Browser Source):");
-  console.log(`    розыгрыш          http://localhost:${config.port}/raffle`);
-  console.log(`    цель сбора        http://localhost:${config.port}/goal`);
-  console.log(`    топ донатеров     http://localhost:${config.port}/top`);
-  console.log(`    последние донаты  http://localhost:${config.port}/recent`);
-  console.log(`    алерты донатов    http://localhost:${config.port}/alerts`);
-  console.log(`    скримеры          http://localhost:${config.port}/screamer`);
+  console.log(`  ${t("Панель управления")}   http://localhost:${config.port}/`);
+  console.log(`  ${t("Данные и настройки")}  ${DATA_DIR}`);
+  console.log(`  ${t("Источники для OBS (Browser Source):")}`);
+  for (const [name, path] of overlays) {
+    console.log(`    ${t(name).padEnd(width)}  http://localhost:${config.port}/${path}`);
+  }
   console.log("");
 
   process.on("SIGINT", () => process.exit(0));
@@ -76,7 +91,7 @@ async function main() {
 
 main().catch((error) => {
   if (error?.code === "EADDRINUSE") {
-    log.warn("server", `порт занят — закрой другую копию или смени port в ${CONFIG_PATH}`);
+    log.warn("server", t("порт занят — закрой другую копию или смени port в {path}", { path: CONFIG_PATH }));
   } else {
     console.error("Ошибка запуска:", error);
   }

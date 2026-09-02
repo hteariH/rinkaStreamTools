@@ -18,6 +18,7 @@ import { log } from "../log.js";
 import { ElevenLabs } from "./elevenlabs.js";
 import { WindowsVoice } from "./windows.js";
 import { speechText } from "./text.js";
+import { t } from "../i18n.js";
 
 // Сколько озвучек держать в памяти и как долго. Больше не нужно: звук играет
 // сразу после доната, а очередь алертов и так идёт по одному.
@@ -85,7 +86,7 @@ export class Tts {
       result = await this.engine.synthesize(text);
     } catch (error) {
       this.status = "error";
-      log.warn("tts", `не озвучилось: ${error.message}`);
+      log.warn("tts", t("не озвучилось: {error}", { error: error.message }));
       return null;
     }
 
@@ -97,7 +98,7 @@ export class Tts {
     // а лишний запрос задержал бы алерт. У офлайнового голоса лимита нет вовсе.
     this.refreshQuota().catch(() => { /* необязательная цифра для панели */ });
 
-    log.info("tts", `озвучено ${text.length} симв.`);
+    log.info("tts", t("озвучено {count} симв.", { count: text.length }));
     return `/tts/${id}.${result.ext}`;
   }
 

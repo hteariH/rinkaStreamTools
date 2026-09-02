@@ -17,6 +17,7 @@ import path from "node:path";
 import process from "node:process";
 
 import { TTS_SCRIPT } from "../paths.js";
+import { t } from "../i18n.js";
 
 // Синтез идёт локально и быстро, но чтение длинного сообщения — секунды.
 const TIMEOUT_MS = 15000;
@@ -58,7 +59,7 @@ export class WindowsVoice {
    * во что-то компактнее нечем и незачем: звук живёт минуту и никуда не уезжает.
    */
   async synthesize(text) {
-    if (!this.ready) throw new Error("голоса Windows есть только в Windows");
+    if (!this.ready) throw new Error(t("голоса Windows есть только в Windows"));
 
     const dir = await mkdtemp(path.join(tmpdir(), "rinka-tts-"));
     const textFile = path.join(dir, "text.txt");
@@ -86,7 +87,7 @@ export class WindowsVoice {
        */
       if (audio.length < SILENCE_BYTES) {
         throw new Error(
-          `голос ${this.config.voice || "по умолчанию"} не прочитал текст — похоже, нужен голос того же языка`
+          t("голос {voice} не прочитал текст — похоже, нужен голос того же языка", { voice: this.config.voice || t("по умолчанию") })
         );
       }
 
@@ -122,12 +123,12 @@ function run(args, timeoutMs) {
 
     const timer = setTimeout(() => {
       child.kill();
-      reject(new Error("озвучка не уложилась во время"));
+      reject(new Error(t("озвучка не уложилась во время")));
     }, timeoutMs);
 
     child.on("error", (error) => {
       clearTimeout(timer);
-      reject(new Error(`PowerShell не запустился: ${error.message}`));
+      reject(new Error(t("не запустился PowerShell: {error}", { error: error.message })));
     });
 
     child.on("exit", (code) => {

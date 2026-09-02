@@ -142,6 +142,7 @@
   </div>
   <div class="offline" id="offline">нет связи</div>
 
+  <script src="/i18n.js"></script>
   <script>
     /*
      * Опрос в чате. Слушает /ws/poll.
@@ -181,8 +182,8 @@
       el("caption").textContent = next.title || "";
       el("question").innerText = next.question || "";
       el("total").textContent = next.total
-        ? `Голосов: ${next.total}`
-        : "Голосов пока нет — напиши номер варианта в чат";
+        ? t("Голосов: {n}", { n: next.total })
+        : t("Голосов пока нет — напиши номер варианта в чат");
 
       build(next);
       startTimer(next);
@@ -193,7 +194,7 @@
       const box = el("options");
       // Разметка пересобирается только при смене состава: иначе полосы дёргались
       // бы с нуля на каждом обновлении голосов.
-      const shape = next.options.map((option) => option.text).join(" ");
+      const shape = next.options.map((option) => option.text).join(" ");
       if (box.dataset.shape !== shape) {
         box.dataset.shape = shape;
         box.innerHTML = "";
@@ -247,7 +248,7 @@
     function startTimer(next) {
       stopTimer();
       if (!next.open) {
-        el("timer").textContent = "голосование закрыто";
+        el("timer").textContent = t("голосование закрыто");
         return;
       }
       if (!next.seconds) {
@@ -256,13 +257,13 @@
       }
 
       let left = next.seconds;
-      const show = () => { el("timer").textContent = `${left} с`; };
+      const show = () => { el("timer").textContent = t("{n} с", { n: left }); };
       show();
       tick = setInterval(() => {
         left -= 1;
         if (left <= 0) {
           stopTimer();
-          el("timer").textContent = "голосование закрыто";
+          el("timer").textContent = t("голосование закрыто");
           return;
         }
         show();
@@ -279,7 +280,13 @@
       const proto = location.protocol === "https:" ? "wss" : "ws";
       ws = new WebSocket(`${proto}://${location.host}/ws/poll`);
       ws.onopen = () => el("offline").classList.remove("show");
-      ws.onmessage = (event) => { try { render(JSON.parse(event.data)); } catch {} };
+      ws.onmessage = (event) => {
+        try {
+          const message = JSON.parse(event.data);
+          i18n.setLang(message.lang);
+          render(message);
+        } catch {}
+      };
       ws.onclose = () => { el("offline").classList.add("show"); setTimeout(connect, 1500); };
       ws.onerror = () => { try { ws.close(); } catch {} };
     }

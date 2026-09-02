@@ -13,6 +13,7 @@ import { spawn } from "node:child_process";
 import process from "node:process";
 
 import { NOWPLAYING_SCRIPT } from "../paths.js";
+import { t } from "../i18n.js";
 
 const RESTART_MS = 15000;
 
@@ -56,7 +57,7 @@ export class SystemMediaSource extends EventEmitter {
       // Медиасессии нет — это не поломка, а другая ОС. Отмечаем статусом и не
       // пытаемся перезапускаться по кругу.
       this._setStatus("error");
-      this.emit("log", "медиасессия есть только в Windows — выбери источник «файл»");
+      this.emit("log", t("медиасессия есть только в Windows — выбери источник «файл»"));
       return;
     }
 
@@ -76,7 +77,7 @@ export class SystemMediaSource extends EventEmitter {
     try {
       this.child = spawn("powershell.exe", args, { windowsHide: true });
     } catch (error) {
-      this._fail(`не запустился PowerShell: ${error.message}`);
+      this._fail(t("не запустился PowerShell: {error}", { error: error.message }));
       return;
     }
 
@@ -90,11 +91,11 @@ export class SystemMediaSource extends EventEmitter {
       if (text) this.emit("log", text);
     });
 
-    this.child.on("error", (error) => this._fail(`опрос не запустился: ${error.message}`));
+    this.child.on("error", (error) => this._fail(t("опрос не запустился: {error}", { error: error.message })));
     this.child.on("exit", () => {
       this.child = null;
       if (this.stopped) return;
-      this._fail("опрос прервался, перезапускаю…");
+      this._fail(t("опрос прервался, перезапускаю…"));
     });
   }
 

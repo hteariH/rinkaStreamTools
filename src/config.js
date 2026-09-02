@@ -7,6 +7,9 @@ import { CONFIG_PATH } from "./paths.js";
 
 export const DEFAULTS = {
   port: 3777,
+  // Язык панели, оверлеев и сообщений сервера: "ru" или "en". Живёт в конфиге, а
+  // не в браузере, потому что на нём же говорят оверлеи в OBS и лог на сервере.
+  language: "ru",
   raffle: {
     axelchatUrl: "ws://127.0.0.1:8356",
     command: "!хил",
