@@ -26,6 +26,9 @@ export class SystemMediaSource extends EventEmitter {
     this.stopped = true;
     this.status = "off";
     this.buffer = "";
+    // Что видели в прошлый раз: список приложений приходит на каждом опросе, а
+    // меняется он редко — рассылать одно и то же дважды в секунду незачем.
+    this.lastApps = "";
   }
 
   start() {
@@ -74,6 +77,7 @@ export class SystemMediaSource extends EventEmitter {
     ];
 
     this.buffer = "";
+    this.lastApps = "";
     try {
       this.child = spawn("powershell.exe", args, { windowsHide: true });
     } catch (error) {
@@ -122,9 +126,21 @@ export class SystemMediaSource extends EventEmitter {
       }
 
       this._setStatus("on");
-      // Список приложений нужен панели: по нему стример выбирает, что писать в
-      // фильтр, чтобы не хватать ролики из браузера.
-      this.emit("apps", Array.isArray(payload.apps) ? payload.apps : []);
+
+      /*
+       * Список приложений нужен панели: по нему стример выбирает, что писать в
+       * фильтр, чтобы не хватать ролики из браузера. Но приходит он с каждым
+       * опросом, то есть дважды в секунду, а меняется — когда открыли или закрыли
+       * плеер. Раньше на каждый такой список панель получала всё состояние
+       * целиком и перерисовывалась заново: за пару часов эфира это тысячи
+       * лишних перерисовок, и тем тяжелее, чем больше накопилось донатов и лога.
+       */
+      const apps = Array.isArray(payload.apps) ? payload.apps : [];
+      const key = JSON.stringify(apps);
+      if (key !== this.lastApps) {
+        this.lastApps = key;
+        this.emit("apps", apps);
+      }
       this.emit("track", payload.track || null);
     }
   }

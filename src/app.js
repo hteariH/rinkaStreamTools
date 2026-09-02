@@ -25,6 +25,11 @@ import { NowPlaying } from "./nowplaying/nowplaying.js";
 import { tierFor } from "./donations/rules.js";
 import { t, setLang } from "./i18n.js";
 
+// Как часто панель получает полное состояние. Реже — заметно на глаз, чаще —
+// пустая трата: за 250 мс человек не успевает ничего заметить, а пачка
+// сообщений из чата укладывается в одну рассылку.
+const CONTROL_PUSH_MS = 250;
+
 export class App {
   constructor(config) {
     this.config = config;
@@ -45,6 +50,9 @@ export class App {
     this.axelchatStatus = "off";
     this.refreshTimer = null;
     this.autoDrawTimer = null;
+
+    this.controlPush = null;
+    this.controlSentAt = 0;
 
     this.donationAlerts = new DonationAlertsSource(config.donationAlerts);
     this.donatello = new DonatelloSource(config.donatello);
@@ -442,8 +450,32 @@ export class App {
     }, left * 1000);
   }
 
+  /**
+   * Полное состояние в панель — пачками, а не на каждое событие.
+   *
+   * Состояние тяжёлое: настройки, вся таблица донатеров, лента, медиатека и
+   * двести строк лога. После перезапуска розыгрыша зрители заходят разом, и на
+   * каждого прилетала отдельная рассылка — двести полных состояний за несколько
+   * секунд, и панель столько же раз перерисовывала себя целиком. Панель — не
+   * эфир, ей хватает нескольких обновлений в секунду.
+   */
   pushControl() {
-    this.hub.broadcast("/ws/control", this.controlState());
+    // Одиночное действие в панели должно отзываться сразу: нажал «Разыграть» —
+    // увидел победителя. Поэтому первая рассылка уходит без задержки, а всё, что
+    // прилетело следом за четверть секунды, схлопывается в одну.
+    const now = Date.now();
+    if (now - this.controlSentAt >= CONTROL_PUSH_MS) {
+      this.controlSentAt = now;
+      this.hub.broadcast("/ws/control", this.controlState());
+      return;
+    }
+
+    if (this.controlPush) return;
+    this.controlPush = setTimeout(() => {
+      this.controlPush = null;
+      this.controlSentAt = Date.now();
+      this.hub.broadcast("/ws/control", this.controlState());
+    }, CONTROL_PUSH_MS - (now - this.controlSentAt));
   }
 
   controlState() {

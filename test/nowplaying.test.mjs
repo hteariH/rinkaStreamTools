@@ -12,6 +12,7 @@ import {
   trackSnapshot,
 } from "../src/nowplaying/track.js";
 import { parseFileText } from "../src/nowplaying/file.js";
+import { SystemMediaSource } from "../src/nowplaying/system.js";
 import { pickByAlbum } from "../src/nowplaying/cover.js";
 import { NowPlaying } from "../src/nowplaying/nowplaying.js";
 import { DEFAULTS } from "../src/config.js";
@@ -157,3 +158,22 @@ test("обложка, опоздавшая к смене трека, на ове
   assert.equal(service.current.cover, null, "обложка прошлого трека прилипла к новому");
 });
 
+test("список приложений уходит только когда он изменился", () => {
+  // Скрипт опроса печатает список на каждом тике — дважды в секунду. Раньше
+  // каждая такая строка поднимала рассылку полного состояния в панель, и за
+  // пару часов эфира набегали тысячи лишних перерисовок.
+  const source = new SystemMediaSource({ appFilter: "", pollIntervalMs: 1500 });
+  const seen = [];
+  source.on("apps", (apps) => seen.push(apps));
+
+  const line = (apps) => JSON.stringify({ apps, track: null }) + "\n";
+  source._onData(line(["Spotify.exe"]));
+  source._onData(line(["Spotify.exe"]));
+  source._onData(line(["Spotify.exe"]));
+  assert.equal(seen.length, 1, `на одинаковый список ушло ${seen.length} рассылок`);
+
+  // Открыли ещё один плеер — вот теперь панели есть что показать.
+  source._onData(line(["Spotify.exe", "AIMP.exe"]));
+  assert.equal(seen.length, 2);
+  assert.deepEqual(seen[1], ["Spotify.exe", "AIMP.exe"]);
+});
