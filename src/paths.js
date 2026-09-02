@@ -43,10 +43,19 @@ export const PUBLIC_DIR = path.join(BASE_DIR, "public");
  * Портативный режим никуда не делся: если рядом с exe лежит папка data, берётся
  * она — это для флешки и для тех, кто хочет держать всё в одном месте.
  *
+ * Ищется она в двух местах: рядом с сервером и этажом выше, рядом с самим
+ * приложением. Человек видит в папке rinkaStreamTools.exe и server/, и класть
+ * data он будет к тому, по чему щёлкает, — а сервер лежит внутри server/.
+ *
  * В разработке (обычный `node server.js`) всё как было, в корне репозитория:
  * запуск из исходников не должен трогать данные живого эфира.
  */
-const PORTABLE_DIR = path.join(BASE_DIR, "data");
+const PORTABLE_DIRS = [
+  // Рядом с приложением: сюда её и положат, глядя на rinkaStreamTools.exe.
+  path.join(BASE_DIR, "..", "data"),
+  // Рядом с сервером — если положили именно туда.
+  path.join(BASE_DIR, "data"),
+];
 
 function profileDir() {
   // APPDATA есть только в Windows; на остальных системах — привычный ~/.config.
@@ -56,9 +65,7 @@ function profileDir() {
 
 export const DATA_DIR = !isSea()
   ? BASE_DIR
-  : existsSync(PORTABLE_DIR)
-    ? PORTABLE_DIR
-    : profileDir();
+  : PORTABLE_DIRS.find((dir) => existsSync(dir)) ?? profileDir();
 
 export const CONFIG_PATH = path.join(DATA_DIR, "config.json");
 // Таблица донатеров и лента последних донатов — данные, а не настройки, поэтому
