@@ -84,7 +84,10 @@ function setChecked(node, value) {
 /** Поле ввода → патч конфига. path — как "goal.target". */
 function bind(id, path, { type = "text", immediate = false } = {}) {
   const node = el(id);
-  const event = type === "checkbox" || node.tagName === "SELECT" || type === "range" ? "change" : "input";
+  const event =
+    type === "checkbox" || type === "range" || type === "color" || node.tagName === "SELECT"
+      ? "change"
+      : "input";
 
   node.addEventListener(event, () => {
     let value;
@@ -142,6 +145,9 @@ bind("da-rate", "donationAlerts.rate", { type: "number" });
 bind("dt-enabled", "donatello.enabled", { type: "checkbox" });
 bind("dt-url", "donatello.widgetUrl");
 bind("dt-rate", "donatello.rate", { type: "number" });
+
+bind("c-name", "colors.name", { type: "color" });
+bind("c-amount", "colors.amount", { type: "color" });
 
 bind("a-enabled", "alerts.enabled", { type: "checkbox" });
 
@@ -261,6 +267,70 @@ el("top-reset").addEventListener("click", () => {
 
 el("recent-reset").addEventListener("click", () => {
   if (confirm("Очистить ленту последних донатов?")) send({ type: "recent.reset" });
+});
+
+/* --------------------------------------------- правка топа и ленты руками */
+
+el("top-list").addEventListener("click", (event) => {
+  const button = event.target.closest(".drop");
+  if (!button) return;
+  if (confirm(`Убрать «${button.dataset.name}» из таблицы донатеров?`)) {
+    send({ type: "top.remove", name: button.dataset.name });
+  }
+});
+
+el("recent-list").addEventListener("click", (event) => {
+  const button = event.target.closest(".drop");
+  if (button) send({ type: "recent.remove", id: button.dataset.id });
+});
+
+el("top-add").addEventListener("click", () => {
+  const name = el("top-add-name").value.trim();
+  const amount = Number(el("top-add-amount").value);
+  if (!name || !(amount > 0)) {
+    toast("Нужны имя и сумма больше нуля", "warn");
+    return;
+  }
+  send({ type: "top.add", name, amount });
+  el("top-add-name").value = "";
+  el("top-add-amount").value = "";
+});
+
+el("recent-add").addEventListener("click", () => {
+  const amount = Number(el("recent-add-amount").value);
+  if (!(amount > 0)) {
+    toast("Нужна сумма больше нуля", "warn");
+    return;
+  }
+  send({
+    type: "recent.add",
+    name: el("recent-add-name").value.trim(),
+    amount,
+    currency: el("recent-add-currency").value.trim(),
+    message: el("recent-add-message").value.trim(),
+  });
+  for (const id of ["recent-add-name", "recent-add-amount", "recent-add-message"]) el(id).value = "";
+});
+
+/* ---------------------------------------------------------------- цвета */
+
+// Сброс — это пустая строка в конфиге: «нет своего цвета» и «чёрный» должны
+// различаться, а поле выбора цвета пустым не бывает.
+el("c-name-reset").addEventListener("click", () => patchConfig({ colors: { name: "" } }, true));
+el("c-amount-reset").addEventListener("click", () => patchConfig({ colors: { amount: "" } }, true));
+
+/* --------------------------------------------------------------- музыка */
+
+el("np-test").addEventListener("click", () => {
+  send({ type: "test.track" });
+  toast("Демо-трек на оверлее");
+});
+
+/* -------------------------------------------------------------- озвучка */
+
+el("tts-refresh").addEventListener("click", () => {
+  send({ type: "tts.refresh" });
+  toast("Спрашиваю ElevenLabs…");
 });
 
 /* ------------------------------------------------------------- скримеры */
@@ -701,22 +771,25 @@ function renderTop(top, config) {
   setValue(el("top-limit"), config.top.limit);
   setValue(el("top-theme"), config.top.theme);
 
-  el("top-list").innerHTML = top.donors.length
-    ? top.donors
+  // В панели таблица целиком: править надо и тех, кто в кадр не попал.
+  const all = top.all ?? top.donors;
+  el("top-list").innerHTML = all.length
+    ? all
         .map(
-          (donor) => `<li>
+          (donor, index) => `<li${index < top.limit ? "" : ' class="is-hidden-row"'}>
             <span class="who">${escapeHtml(donor.name)}</span>
             <span class="svc">${donor.count}&nbsp;×</span>
             <b>${fmtMoney(donor.total)} ${escapeHtml(top.currency)}</b>
+            <button class="drop" data-name="${escapeHtml(donor.name)}" title="убрать">×</button>
           </li>`
         )
         .join("")
     : "";
 
   const parts = [];
-  if (!top.donors.length) parts.push("Пока никого — донаты появятся здесь по мере эфира.");
+  if (!top.totalDonors) parts.push("Пока никого — донаты появятся здесь по мере эфира.");
   if (top.totalDonors > top.donors.length) {
-    parts.push(`Всего донатеров: ${top.totalDonors}, в списке — ${top.donors.length}.`);
+    parts.push(`На оверлее видно ${top.donors.length} из ${top.totalDonors}; здесь список целиком.`);
   }
   if (top.anonymous.count > 0) {
     parts.push(
@@ -742,6 +815,7 @@ function renderRecent(recent, config) {
         <b>${fmtMoney(donation.amount)} ${escapeHtml(donation.currency)}</b>
         <span class="at">${new Date(donation.at).toLocaleTimeString("ru-RU")}</span>
         ${donation.message ? `<span class="msg">${escapeHtml(donation.message)}</span>` : ""}
+        <button class="drop" data-id="${escapeHtml(donation.id)}" title="убрать">×</button>
       </li>`
     )
     .join("");
@@ -900,6 +974,20 @@ function quotaText(tts) {
   ].filter(Boolean).join(" ");
 }
 
+/**
+ * Цвета ника и суммы. В поле выбора всегда стоит цвет — пустым оно не бывает, —
+ * поэтому «как в теме» показывается подписью, а не самим полем.
+ */
+const THEME_COLORS = { name: "#ffd54a", amount: "#7cfc7c" };
+
+function renderColors(config) {
+  setValue(el("c-name"), config.colors.name || THEME_COLORS.name);
+  setValue(el("c-amount"), config.colors.amount || THEME_COLORS.amount);
+
+  const what = (key, label) => `${label} — ${config.colors[key] ? "свой цвет" : "как в теме"}`;
+  el("c-note").textContent = `Сейчас: ${what("name", "ник")}, ${what("amount", "сумма")}.`;
+}
+
 function renderUrls(port) {
   const base = `http://localhost:${port}`;
   const items = [
@@ -972,6 +1060,7 @@ function escapeHtml(value) {
 function render(next) {
   state = next;
   renderStatuses(next.status);
+  renderColors(next.config);
   renderMedia(next.media);
   renderTts(next.tts, next.config);
   renderConfig(next.config, next.media);

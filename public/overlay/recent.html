@@ -172,6 +172,9 @@
     // меняется ширина источника в OBS, а нового сообщения при этом нет.
     let current = null;
     let lastSignature = null;
+    // Цвета приезжают вместе с лентой; строка пересобирается целиком, так что
+    // держать их отдельно достаточно.
+    let colors = {};
 
     function render(state) {
       if (!state || state.type !== "recent") return;
@@ -183,7 +186,8 @@
 
       // Пересобираем только когда лента реально изменилась: иначе строка
       // дёргалась бы в начало на каждом обновлении соседних оверлеев.
-      const signature = JSON.stringify(state.donations) + ":" + state.speed;
+      colors = state.colors || {};
+      const signature = JSON.stringify(state.donations) + ":" + state.speed + ":" + JSON.stringify(colors);
       if (signature === lastSignature) return;
       lastSignature = signature;
 
@@ -230,6 +234,11 @@
       track.style.animationDuration = `${width / speed}s`;
     }
 
+    /** Цвет из настроек. Пусто — оставляем тот, что задала тема. */
+    function paint(element, color) {
+      if (color) element.style.color = color;
+    }
+
     function itemNode(donation) {
       const item = document.createElement("div");
       item.className = "item";
@@ -247,6 +256,9 @@
       const sum = document.createElement("span");
       sum.className = "sum";
       sum.textContent = `${fmt(donation.amount)} ${donation.currency || ""}`.trim();
+
+      paint(name, colors.name);
+      paint(sum, colors.amount);
 
       item.append(name, dash, sum);
       return item;

@@ -210,6 +210,7 @@ export class App {
       tierName: tier.name,
       durationMs: Number(tier.durationMs) || 7000,
       theme: tier.theme || "default",
+      colors: this.config.colors,
       volume: clamp01(this.config.alerts.volume, 0.8),
       // Что показать и что сыграть, решает сервер: у него список файлов, и
       // оверлею незачем знать, что их несколько.
@@ -339,12 +340,15 @@ export class App {
   }
 
   topSnapshot() {
-    return this.donors.snapshot(
-      this.config.top,
-      // Валюта — общая, от цели: суммы в топе приведены к ней же.
-      this.config.goal.currency || "USD",
-      this.config.top.theme || "default"
-    );
+    return {
+      ...this.donors.snapshot(
+        this.config.top,
+        // Валюта — общая, от цели: суммы в топе приведены к ней же.
+        this.config.goal.currency || "USD",
+        this.config.top.theme || "default"
+      ),
+      colors: this.config.colors,
+    };
   }
 
   pushRecent() {
@@ -353,7 +357,10 @@ export class App {
   }
 
   recentSnapshot() {
-    return this.recent.snapshot(this.config.recent, this.config.recent.theme || "default");
+    return {
+      ...this.recent.snapshot(this.config.recent, this.config.recent.theme || "default"),
+      colors: this.config.colors,
+    };
   }
 
   pushTrack() {
@@ -375,7 +382,9 @@ export class App {
       config: this.config,
       raffle: { ...this.raffle.snapshot(), participants: this.raffle.entries() },
       goal: this.goal.snapshot(),
-      top: this.topSnapshot(),
+      // В панели таблица целиком, а не только видимая на оверлее часть: править
+      // надо и того, кто в кадр не попал.
+      top: { ...this.topSnapshot(), all: this.donors.all() },
       // В панели лента полная и с сообщениями, а не та обрезанная, что едет
       // строкой на оверлее.
       recent: { donations: this.recent.history() },
@@ -439,6 +448,51 @@ export class App {
       case "raffle.timer":
         this.handleTimer(message, reply);
         return;
+      case "top.remove": {
+        if (!this.donors.remove(message.name)) {
+          reply("Такого донатера в таблице нет", "warn");
+          return;
+        }
+        log.info("top", `убран донатер: ${message.name}`);
+        this.pushTop();
+        return;
+      }
+      case "top.add": {
+        const added = this.donors.addManual(message.name, message.amount);
+        if (!added) {
+          reply("Нужны имя и сумма больше нуля", "warn");
+          return;
+        }
+        log.info("top", `+ ${added.name}: ${added.total} (вручную)`);
+        this.pushTop();
+        reply(`Добавлено: ${added.name}`, "ok");
+        return;
+      }
+      case "recent.remove": {
+        if (!this.recent.remove(message.id)) {
+          reply("Такого доната в ленте нет", "warn");
+          return;
+        }
+        log.info("recent", "донат убран из ленты");
+        this.pushRecent();
+        return;
+      }
+      case "recent.add": {
+        const added = this.recent.addManual({
+          name: message.name,
+          amount: message.amount,
+          currency: message.currency || this.config.goal.currency,
+          message: message.message,
+        });
+        if (!added) {
+          reply("Нужна сумма больше нуля", "warn");
+          return;
+        }
+        log.info("recent", `+ ${added.name || "аноним"}: ${added.amount} ${added.currency} (вручную)`);
+        this.pushRecent();
+        reply("Добавлено в ленту", "ok");
+        return;
+      }
       case "top.reset":
         this.donors.reset();
         log.info("top", "таблица донатеров очищена");

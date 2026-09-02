@@ -62,6 +62,42 @@ export class Recent {
     return entry;
   }
 
+  /**
+   * Убрать один донат из ленты — по тем же причинам, что и из топа: ник или
+   * сообщение бывают такими, что в кадре им не место.
+   */
+  remove(id) {
+    const before = this.items.length;
+    this.items = this.items.filter((item) => item.id !== String(id));
+    if (this.items.length === before) return false;
+    this.scheduleSave();
+    return true;
+  }
+
+  /**
+   * Донат мимо площадок — руками. В ленте он такой же, как остальные: событие
+   * было, а откуда пришли деньги, зрителю всё равно.
+   */
+  addManual({ name, amount, currency, message }) {
+    const value = Number(amount);
+    if (!Number.isFinite(value) || value <= 0) return null;
+
+    const entry = normalize({
+      id: `manual-${Date.now()}`,
+      source: "manual",
+      name,
+      amount: value,
+      currency,
+      message,
+      at: Date.now(),
+    });
+
+    this.items.unshift(entry);
+    if (this.items.length > KEEP) this.items.length = KEEP;
+    this.scheduleSave();
+    return entry;
+  }
+
   /** Свежее сверху. */
   list(limit = 5) {
     return this.items.slice(0, Math.max(1, limit));

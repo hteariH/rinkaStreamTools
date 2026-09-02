@@ -196,8 +196,20 @@
 
         <div class="card">
           <h2>Топ донатеров</h2>
-          <ol class="top-list" id="top-list"></ol>
+          <ol class="top-list top-list--editable" id="top-list"></ol>
           <p class="note" id="top-note"></p>
+
+          <div class="actions">
+            <input type="text" id="top-add-name" class="inline-input" placeholder="имя донатера" />
+            <input type="number" id="top-add-amount" class="inline-input inline-input--short" placeholder="сумма" step="0.01" min="0" />
+            <button class="btn" id="top-add">Добавить</button>
+          </div>
+          <p class="note">
+            Крестик убирает донатера из таблицы — например с ником, которому не место
+            в кадре. Добавленная вручную сумма считается уже в валюте цели: множители
+            площадок к ней не применяются, площадки тут не участвовали. Саму цель это
+            не двигает — для неё есть «добавка вручную» выше.
+          </p>
 
           <div class="field-row">
             <label class="field">
@@ -235,8 +247,22 @@
 
         <div class="card">
           <h2>Последние донаты</h2>
-          <ul class="feed" id="recent-list"></ul>
+          <ul class="feed feed--editable" id="recent-list"></ul>
           <p class="note" id="recent-note"></p>
+
+          <div class="actions">
+            <input type="text" id="recent-add-name" class="inline-input" placeholder="имя (пусто — аноним)" />
+            <input type="number" id="recent-add-amount" class="inline-input inline-input--short" placeholder="сумма" step="0.01" min="0" />
+            <input type="text" id="recent-add-currency" class="inline-input inline-input--short" placeholder="валюта" />
+          </div>
+          <div class="actions">
+            <input type="text" id="recent-add-message" class="inline-input" placeholder="сообщение, если было" />
+            <button class="btn" id="recent-add">Добавить в ленту</button>
+          </div>
+          <p class="note">
+            Крестик убирает донат из ленты. Лента и топ — разные списки: добавленное
+            сюда не попадёт в таблицу донатеров, и наоборот.
+          </p>
 
           <div class="field-row">
             <label class="field">
@@ -281,6 +307,37 @@
             нужны, чтобы складывать, а здесь складывать нечего.
             Анонимные донаты в ленте остаются — событие было, даже если приписать
             его некому.
+          </p>
+        </div>
+
+        <div class="card">
+          <h2>Цвета</h2>
+          <p class="note">
+            Ник и сумма — одни и те же две роли на алертах, в топе и в ленте, поэтому
+            цвет у них общий. Пока цвет не задан, его берёт на себя тема оверлея.
+          </p>
+
+          <div class="field-row">
+            <label class="field">
+              <span>Цвет ника</span>
+              <div class="color-row">
+                <input type="color" id="c-name" />
+                <button class="btn btn--ghost" id="c-name-reset">как в теме</button>
+              </div>
+            </label>
+            <label class="field">
+              <span>Цвет суммы</span>
+              <div class="color-row">
+                <input type="color" id="c-amount" />
+                <button class="btn btn--ghost" id="c-amount-reset">как в теме</button>
+              </div>
+            </label>
+          </div>
+
+          <p class="note" id="c-note"></p>
+          <p class="note">
+            Свечение и рамки остаются от темы: цвет меняет только сам текст. Проверить
+            вживую — кнопкой «Прогнать донат» ниже.
           </p>
         </div>
 

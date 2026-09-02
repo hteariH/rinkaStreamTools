@@ -95,6 +95,45 @@ export class Donors {
     return entry;
   }
 
+  /**
+   * Убрать донатера из таблицы. Нужно не для порядка, а для эфира: ник бывает
+   * такой, что его нельзя держать в кадре, а сумма уже посчитана.
+   */
+  remove(name) {
+    const removed = this.donors.delete(Donors.keyFor(name));
+    if (removed) this.scheduleSave();
+    return removed;
+  }
+
+  /**
+   * Донат мимо площадок: наличные, перевод на карту, донат из чужой программы.
+   * Сумма считается уже в валюте цели — множители площадок к ней применять не к
+   * чему, площадки тут не участвовали.
+   */
+  addManual(name, amount) {
+    const clean = String(name ?? "").trim();
+    const value = round2(Number(amount));
+    if (!clean || !Number.isFinite(value) || value <= 0) return null;
+
+    const key = Donors.keyFor(clean);
+    const entry = this.donors.get(key) ?? { name: clean, total: 0, count: 0, sources: [], lastAt: 0 };
+
+    entry.total = round2(entry.total + value);
+    entry.count += 1;
+    entry.lastAt = Date.now();
+    entry.name = clean;
+    if (!entry.sources.includes("manual")) entry.sources.push("manual");
+
+    this.donors.set(key, entry);
+    this.scheduleSave();
+    return entry;
+  }
+
+  /** Вся таблица, а не только видимая на оверлее часть: панель правит её целиком. */
+  all() {
+    return this.top(Number.MAX_SAFE_INTEGER);
+  }
+
   /** Список сверху вниз. При равных суммах выше тот, кто занёс раньше. */
   top(limit = 10) {
     return [...this.donors.values()]

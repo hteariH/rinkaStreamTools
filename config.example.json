@@ -23,6 +23,10 @@
     "pollIntervalMs": 60000,
     "theme": "default"
   },
+  "colors": {
+    "name": "",
+    "amount": ""
+  },
   "alerts": {
     "enabled": true,
     "volume": 0.8,

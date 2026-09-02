@@ -190,6 +190,11 @@
 
     const SOURCES = { donationAlerts: "DonationAlerts", donatello: "Donatello" };
 
+    /** Цвет из настроек. Пусто — оставляем тот, что задала тема. */
+    function paint(element, color) {
+      if (color) element.style.color = color;
+    }
+
     /** Файл из медиатеки: имя в адресе кодируется — там бывают пробелы и кириллица. */
     function mediaUrl(name) {
       return "/media/" + encodeURIComponent(name);
@@ -246,9 +251,14 @@
       }
 
       const headline = node("div", "headline");
-      headline.appendChild(node("span", "donor", data.donorName || "Аноним"));
-      headline.appendChild(document.createTextNode(" — "));
-      headline.appendChild(node("span", "amount", fmtAmount(data)));
+      const donor = node("span", "donor", data.donorName || "Аноним");
+      const amount = node("span", "amount", fmtAmount(data));
+      // Цвета из панели ставятся на сам элемент: тема задаёт их правилом, и
+      // перебить его снаружи иначе можно только войной селекторов.
+      paint(donor, data.colors?.name);
+      paint(amount, data.colors?.amount);
+
+      headline.append(donor, document.createTextNode(" — "), amount);
       card.appendChild(headline);
 
       if (data.message) card.appendChild(node("div", "message", data.message));

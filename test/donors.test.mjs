@@ -121,3 +121,36 @@ test("сброс очищает и людей, и анонимов", () => {
   assert.equal(donors.anonymous.count, 0);
   cleanup();
 });
+
+test("донатера можно убрать из таблицы", () => {
+  const { donors, cleanup } = makeDonors();
+  donors.add(donation({ donorName: "Аня", amount: 10 }));
+  donors.add(donation({ donorName: "Гадкий ник", amount: 5 }));
+
+  // Имя сравнивается без регистра — тем же ключом, что и объединение донатов.
+  assert.equal(donors.remove("гадкий НИК"), true);
+  assert.equal(donors.remove("кого нет"), false);
+  assert.deepEqual(donors.all().map((entry) => entry.name), ["Аня"]);
+  cleanup();
+});
+
+test("донат мимо площадок добавляется руками и складывается с прежними", () => {
+  const { donors, cleanup } = makeDonors({ donationAlerts: 2 });
+  donors.add(donation({ donorName: "Аня", amount: 10 }));
+
+  // Множитель площадки к ручной сумме не применяется: площадки тут не было.
+  const entry = donors.addManual("Аня", 5);
+  assert.equal(entry.total, 25, "20 с площадки по множителю 2 плюс 5 наличными");
+  assert.equal(entry.count, 2);
+  assert.ok(entry.sources.includes("manual"));
+  cleanup();
+});
+
+test("пустое имя или сумма не создают донатера", () => {
+  const { donors, cleanup } = makeDonors();
+  assert.equal(donors.addManual("", 10), null);
+  assert.equal(donors.addManual("Аня", 0), null);
+  assert.equal(donors.addManual("Аня", -5), null);
+  assert.equal(donors.all().length, 0);
+  cleanup();
+});

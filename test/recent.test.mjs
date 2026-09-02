@@ -149,3 +149,33 @@ test("в панель уходит вся лента с сообщениями",
   assert.ok(first.at > 0, "в панели время нужно — по нему сверяют, дошёл ли донат");
   cleanup();
 });
+
+test("донат можно убрать из ленты", async () => {
+  const { recent, cleanup } = makeRecent();
+  recent.add(donation({ id: "a", donorName: "Аня" }));
+  recent.add(donation({ id: "b", donorName: "Гадкий ник" }));
+
+  assert.equal(recent.remove("b"), true);
+  assert.equal(recent.remove("b"), false, "второй раз убирать уже нечего");
+  assert.deepEqual(recent.list().map((item) => item.id), ["a"]);
+  await cleanup();
+});
+
+test("донат мимо площадок добавляется в ленту руками", async () => {
+  const { recent, cleanup } = makeRecent();
+  const entry = recent.addManual({ name: "Аня", amount: 500, currency: "UAH", message: "наличными" });
+
+  assert.equal(entry.amount, 500);
+  assert.equal(entry.currency, "UAH");
+  assert.equal(recent.list()[0].id, entry.id, "новый донат должен быть сверху");
+  // Сообщение видно в панели, но на оверлей лента его не отдаёт.
+  assert.equal(recent.snapshot({ limit: 5 }, "default").donations[0].message, undefined);
+  await cleanup();
+});
+
+test("донат без суммы в ленту не идёт", async () => {
+  const { recent, cleanup } = makeRecent();
+  assert.equal(recent.addManual({ name: "Аня", amount: 0, currency: "USD" }), null);
+  assert.equal(recent.list().length, 0);
+  await cleanup();
+});
