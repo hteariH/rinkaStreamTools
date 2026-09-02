@@ -4,7 +4,9 @@
 //    чтобы config.json и public/ можно было редактировать рядом с exe.
 
 import path from "node:path";
+import os from "node:os";
 import process from "node:process";
+import { existsSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import { createRequire } from "node:module";
 
@@ -27,13 +29,45 @@ export const BASE_DIR = isSea()
   : path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 
 export const PUBLIC_DIR = path.join(BASE_DIR, "public");
-export const CONFIG_PATH = path.join(BASE_DIR, "config.json");
+
+/*
+ * Данные стримера — настройки, таблица донатеров, лента и медиа алертов — лежат
+ * отдельно от самой программы.
+ *
+ * Раньше они жили рядом с exe, и это ломалось об обычную привычку обновляться:
+ * браузер распаковывает новый архив в соседнюю папку «имя (1)», человек запускает
+ * оттуда — и оказывается с чистыми настройками, а прошлые донаты остаются в
+ * старой папке. Профиль пользователя от того, куда распакована программа, не
+ * зависит вовсе.
+ *
+ * Портативный режим никуда не делся: если рядом с exe лежит папка data, берётся
+ * она — это для флешки и для тех, кто хочет держать всё в одном месте.
+ *
+ * В разработке (обычный `node server.js`) всё как было, в корне репозитория:
+ * запуск из исходников не должен трогать данные живого эфира.
+ */
+const PORTABLE_DIR = path.join(BASE_DIR, "data");
+
+function profileDir() {
+  // APPDATA есть только в Windows; на остальных системах — привычный ~/.config.
+  const base = process.env.APPDATA || process.env.XDG_CONFIG_HOME || path.join(os.homedir(), ".config");
+  return path.join(base, "rinkaStreamTools");
+}
+
+export const DATA_DIR = !isSea()
+  ? BASE_DIR
+  : existsSync(PORTABLE_DIR)
+    ? PORTABLE_DIR
+    : profileDir();
+
+export const CONFIG_PATH = path.join(DATA_DIR, "config.json");
 // Таблица донатеров и лента последних донатов — данные, а не настройки, поэтому
 // лежат отдельно от конфига и друг от друга: очистить одно, не трогая другое,
 // иначе было бы нельзя.
-export const DONORS_PATH = path.join(BASE_DIR, "donors.json");
-export const RECENT_PATH = path.join(BASE_DIR, "recent.json");
-// Опрос медиасессии Windows делает скрипт на PowerShell — он лежит рядом со своим
-// модулем и в собранную папку кладётся по тому же относительному пути, чтобы
-// искать его в двух режимах запуска не пришлось по-разному.
+export const DONORS_PATH = path.join(DATA_DIR, "donors.json");
+export const RECENT_PATH = path.join(DATA_DIR, "recent.json");
+// Гифки и звуки алертов, которые стример добавил сам.
+export const MEDIA_DIR = path.join(DATA_DIR, "media");
 export const NOWPLAYING_SCRIPT = path.join(BASE_DIR, "src", "nowplaying", "session.ps1");
+// Офлайновая озвучка — тоже через PowerShell и по тому же правилу.
+export const TTS_SCRIPT = path.join(BASE_DIR, "src", "tts", "speak.ps1");

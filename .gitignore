@@ -4,6 +4,8 @@ config.json
 *.log
 donors.json
 recent.json
+# Гифки и звуки алертов — файлы стримера, не наше дело.
+media/
 
 # Проект IntelliJ IDEA: у каждого свои, в репозитории им делать нечего.
 .idea/

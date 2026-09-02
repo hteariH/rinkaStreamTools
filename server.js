@@ -4,7 +4,8 @@
 
 import { existsSync } from "node:fs";
 import { loadConfig, saveConfig } from "./src/config.js";
-import { CONFIG_PATH, PUBLIC_DIR } from "./src/paths.js";
+import { migrateData } from "./src/data.js";
+import { BASE_DIR, CONFIG_PATH, DATA_DIR, PUBLIC_DIR } from "./src/paths.js";
 import { log } from "./src/log.js";
 import { App } from "./src/app.js";
 
@@ -41,6 +42,14 @@ async function main() {
     process.exit(1);
   }
 
+  // Данные лежат в профиле пользователя, а раньше лежали рядом с exe. Первый
+  // запуск новой версии забирает их с прошлого места, иначе обновление выглядело
+  // бы как потеря настроек и всех донатов за эфиры.
+  const moved = await migrateData(BASE_DIR, DATA_DIR);
+  if (moved.length) {
+    log.ok("server", `настройки и данные перенесены в ${DATA_DIR}: ${moved.join(", ")}`);
+  }
+
   const config = await loadConfig();
   // Первый запуск: кладём конфиг рядом, чтобы его было где править руками.
   if (!existsSync(CONFIG_PATH)) await saveConfig(config);
@@ -52,6 +61,7 @@ async function main() {
 
   console.log("");
   console.log(`  Панель управления   http://localhost:${config.port}/`);
+  console.log(`  Данные и настройки  ${DATA_DIR}`);
   console.log("  Источники для OBS (Browser Source):");
   console.log(`    розыгрыш          http://localhost:${config.port}/raffle`);
   console.log(`    цель сбора        http://localhost:${config.port}/goal`);
