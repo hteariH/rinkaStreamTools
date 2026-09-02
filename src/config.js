@@ -40,6 +40,8 @@ export const DEFAULTS = {
   },
   alerts: {
     enabled: true,
+    // Громкость звуков алертов: 0 — тихо, 1 — как записано в файле.
+    volume: 0.8,
     // Тиры: во что попадает донат по сумме. Каждый включается отдельно для каждой
     // площадки — например мелкие донаты с Donatello показывать, а с DonationAlerts
     // нет, если там свои алерты уже настроены.
@@ -49,8 +51,16 @@ export const DEFAULTS = {
     tiers: [
       {
         id: "small",
+        speak: false,
         name: "Мелкий",
         durationMs: 5000,
+        // Вид карточки алерта — как темы у остальных оверлеев.
+        theme: "default",
+        // Гифки и звуки из папки media/ рядом с конфигом. Их может быть
+        // несколько: на каждый донат берётся случайный, чтобы за эфир не
+        // приелось. Пусто — алерт без картинки и со звуком по умолчанию.
+        images: [],
+        sounds: [],
         // Вылетает ли на этот тир скример.
         screamer: false,
         sources: { donationAlerts: true, donatello: true },
@@ -58,16 +68,24 @@ export const DEFAULTS = {
       },
       {
         id: "medium",
+        speak: false,
         name: "Средний",
         durationMs: 7000,
+        theme: "default",
+        images: [],
+        sounds: [],
         screamer: true,
         sources: { donationAlerts: true, donatello: true },
         minAmounts: { USD: 5, USDT: 5, EUR: 5, UAH: 200, RUB: 450, KZT: 2500, BYN: 15, default: 5 },
       },
       {
         id: "big",
+        speak: false,
         name: "Крупный",
         durationMs: 9000,
+        theme: "default",
+        images: [],
+        sounds: [],
         screamer: true,
         sources: { donationAlerts: true, donatello: true },
         minAmounts: { USD: 20, USDT: 20, EUR: 20, UAH: 800, RUB: 1800, KZT: 10000, BYN: 60, default: 20 },
@@ -90,6 +108,32 @@ export const DEFAULTS = {
     // Скорость бегущей строки, пикселей в секунду.
     speed: 60,
     theme: "default",
+  },
+  tts: {
+    // Озвучка сообщений донатеров. Читаются только те тиры, у которых отмечено
+    // «Читать сообщение»: у облачного движка счёт посимвольный, и тратить его на
+    // донат в доллар обычно не хочется.
+    enabled: false,
+    // "windows" — голоса Windows: бесплатно, офлайн, звучит роботом.
+    // "elevenlabs" — облако по ключу стримера: звучит живо, но упирается в лимиты
+    // и в план (бесплатный у них некоммерческий).
+    engine: "windows",
+    // Читать ли имя донатера перед сообщением.
+    readName: true,
+    // Потолок на сообщение: у облака это прямые деньги, у офлайна — минута чтения.
+    maxChars: 200,
+    windows: {
+      // Имя голоса, как его показывает система. Пусто — голос по умолчанию.
+      voice: "",
+      // Скорость речи, от -10 до 10.
+      rate: 0,
+    },
+    elevenlabs: {
+      // Ключ лежит в этом файле открытым текстом — как и ссылки на виджеты площадок.
+      apiKey: "",
+      voiceId: "",
+      modelId: "eleven_flash_v2_5",
+    },
   },
   nowplaying: {
     // Что сейчас играет. Источник — медиасессия Windows: та самая, из которой
@@ -163,9 +207,32 @@ function inheritGoalTheme(raw, config) {
   return config;
 }
 
-/** Конфиг из разобранного файла: умолчания плюс перенос темы со старых версий. */
+/**
+ * Настройки озвучки сначала лежали одной плоской кучей: ключ и голос прямо в tts.
+ * Движков стало два, у каждого свои поля — переносим старое в ветку ElevenLabs,
+ * чтобы у того, кто уже вписал ключ, он не пропал при обновлении.
+ */
+function moveTtsToEngine(raw, config) {
+  const old = raw?.tts;
+  if (!old || old.apiKey === undefined) return config;
+
+  config.tts = {
+    ...config.tts,
+    // Ключ был вписан — значит пользовались облаком.
+    engine: raw.tts.engine === "windows" ? "windows" : "elevenlabs",
+    elevenlabs: {
+      ...config.tts.elevenlabs,
+      apiKey: old.apiKey ?? "",
+      voiceId: old.voiceId ?? "",
+      modelId: old.modelId || config.tts.elevenlabs.modelId,
+    },
+  };
+  return config;
+}
+
+/** Конфиг из разобранного файла: умолчания плюс переносы со старых версий. */
 export function applyDefaults(raw) {
-  return inheritGoalTheme(raw, merge(DEFAULTS, raw));
+  return moveTtsToEngine(raw, inheritGoalTheme(raw, merge(DEFAULTS, raw)));
 }
 
 export async function loadConfig() {

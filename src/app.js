@@ -3,10 +3,12 @@
 // приходят команды снаружи.
 
 import { existsSync } from "node:fs";
+import { spawn } from "node:child_process";
 import path from "node:path";
+import process from "node:process";
 
 import { Hub } from "./server.js";
-import { PUBLIC_DIR, DONORS_PATH, RECENT_PATH } from "./paths.js";
+import { PUBLIC_DIR, DONORS_PATH, RECENT_PATH, MEDIA_DIR, DATA_DIR } from "./paths.js";
 import { log } from "./log.js";
 import { saveConfig } from "./config.js";
 import { Raffle } from "./raffle/raffle.js";
@@ -16,6 +18,8 @@ import { DonatelloSource } from "./donations/donatello.js";
 import { Goal } from "./donations/goal.js";
 import { Donors } from "./donations/donors.js";
 import { Recent } from "./donations/recent.js";
+import { Media } from "./media.js";
+import { Tts } from "./tts/service.js";
 import { NowPlaying } from "./nowplaying/nowplaying.js";
 import { tierFor } from "./donations/rules.js";
 
@@ -53,6 +57,18 @@ export class App {
     // сами донаты — каждый в валюте, в которой пришёл.
     this.recent = new Recent(RECENT_PATH);
 
+    // Гифки и звуки алертов. Список файлов держим при себе: выбирать медиа
+    // приходится в момент доната, а лезть в это время на диск — лишняя задержка
+    // перед тем, что зритель ждёт прямо сейчас.
+    this.media = new Media(MEDIA_DIR);
+    this.mediaFiles = { images: [], sounds: [] };
+    // Что выпало в прошлый раз, по тирам: две одинаковых гифки подряд на пачке
+    // донатов выглядят как зависший оверлей.
+    this.lastMedia = new Map();
+
+    // Озвучка сообщений. Ключ и голос — стримера, программа только клиент.
+    this.tts = new Tts(config.tts);
+
     // Что играет — сбоку от донатов: со сбором это не связано никак, поэтому и
     // канал у оверлея свой.
     this.nowPlaying = new NowPlaying(config.nowplaying);
@@ -73,6 +89,13 @@ export class App {
       },
       (channel, message, ws) => {
         if (channel === "/ws/control") this.handleCommand(message, ws);
+      },
+      {
+        media: this.media,
+        tts: this.tts,
+        // Файл добавили или убрали из панели — список в панели должен обновиться
+        // сразу, а не после перезапуска.
+        onMediaChange: () => this.refreshMedia(),
       }
     );
   }
@@ -80,6 +103,7 @@ export class App {
   async start() {
     await this.donors.load();
     await this.recent.load();
+    await this.refreshMedia();
     await this.hub.start();
 
     this._wireAxelChat();
@@ -143,7 +167,7 @@ export class App {
   }
 
   /** Единая точка входа для доната из любой площадки — и для теста из панели. */
-  onDonation(donation) {
+  async onDonation(donation) {
     log.ok(
       donation.source,
       `донат ${donation.amount} ${donation.currency} от ${donation.donorName || "анонима"}`
@@ -174,12 +198,23 @@ export class App {
       `тир «${tier.name}» (${comparable.amount} ${comparable.currency} ≥ ${threshold})`
     );
 
+    // Озвучка ждётся до показа, а не догоняет алерт: голос, приехавший к уже
+    // уехавшей карточке, читает сообщение, которого на экране больше нет.
+    // Не успела или не задалась — алерт всё равно выходит, просто молча.
+    const voice = tier.speak ? await this.tts.speak(donation) : null;
+
     this.hub.broadcast("/ws/alerts", {
       ...donation,
       type: "alert",
       tier: tier.id,
       tierName: tier.name,
       durationMs: Number(tier.durationMs) || 7000,
+      theme: tier.theme || "default",
+      volume: clamp01(this.config.alerts.volume, 0.8),
+      // Что показать и что сыграть, решает сервер: у него список файлов, и
+      // оверлею незачем знать, что их несколько.
+      ...this.pickMedia(tier),
+      voice,
     });
 
     // Скример — свойство тира: на мелкие донаты он обычно не нужен, а на крупные
@@ -208,6 +243,31 @@ export class App {
       variant,
     });
     log.info("screamer", `проверка: вариация «${variant}»`);
+  }
+
+  /**
+   * Гифка и звук для алерта: случайные из того, что выбрано в тире.
+   *
+   * Из списка выкидывается то, чего на диске уже нет: файл могли убрать из папки
+   * руками, а тир про него ещё помнит — на эфире это была бы битая картинка.
+   */
+  pickMedia(tier) {
+    const has = (kind) => new Set(this.mediaFiles[kind].map((file) => file.name));
+    const images = (tier.images ?? []).filter((name) => has("images").has(name));
+    const sounds = (tier.sounds ?? []).filter((name) => has("sounds").has(name));
+
+    const last = this.lastMedia.get(tier.id) || {};
+    const image = pickOne(images, last.image);
+    const sound = pickOne(sounds, last.sound);
+    this.lastMedia.set(tier.id, { image, sound });
+
+    return { image, sound };
+  }
+
+  /** Перечитать папку медиа и разослать новый список в панель. */
+  async refreshMedia() {
+    this.mediaFiles = await this.media.list();
+    this.pushControl();
   }
 
   /**
@@ -319,6 +379,13 @@ export class App {
       // В панели лента полная и с сообщениями, а не та обрезанная, что едет
       // строкой на оверлее.
       recent: { donations: this.recent.history() },
+      media: this.mediaFiles,
+      // Где лежат настройки и данные: без этого «куда делись мои донаты после
+      // обновления» не на что ответить.
+      dataDir: DATA_DIR,
+      // Ключ наружу не отдаём — только факт, что он задан, остаток лимита и
+      // список голосов.
+      tts: this.tts.state(),
       // В панели трек как есть, вместе с паузой: прячет её только оверлей, а
       // стримеру видно, что музыка вообще идёт.
       nowplaying: { track: this.nowPlaying.current, apps: this.nowPlaying.apps },
@@ -392,6 +459,47 @@ export class App {
         log.info("track", "проверка: демо-трек на оверлее");
         return;
       }
+      case "data.open": {
+        // Проводник — единственный способ показать папку человеку, который не
+        // ходит по путям руками.
+        if (process.platform !== "win32") {
+          reply(DATA_DIR, "info");
+          return;
+        }
+        // Проводник возвращает ненулевой код даже когда открылся, поэтому за его
+        // выходом не следим.
+        spawn("explorer.exe", [DATA_DIR], { detached: true, stdio: "ignore" }).unref();
+        reply("Папка открыта");
+        return;
+      }
+      case "tts.refresh":
+        /*
+         * Голоса и остаток лимита спрашиваются независимо: у ключа с урезанными
+         * правами одно может быть разрешено, а другое нет, и падать целиком из-за
+         * недоступной цифры лимита — значит скрыть работающий список голосов.
+         */
+        Promise.allSettled([this.tts.refreshVoices(), this.tts.refreshQuota()]).then(
+          ([voices, quota]) => {
+            this.pushControl();
+
+            const parts = [];
+            parts.push(
+              voices.status === "fulfilled"
+                ? `Голосов: ${this.tts.voices.length}`
+                : `Голоса не пришли: ${voices.reason.message}`
+            );
+            // У офлайнового движка лимита нет вовсе — молчим про него, а не
+            // пишем «недоступен», как будто что-то сломалось.
+            if (quota.status === "rejected" && this.tts.engineName !== "windows") {
+              parts.push(`остаток лимита недоступен: ${quota.reason.message}`);
+            }
+
+            const ok = voices.status === "fulfilled";
+            reply(parts.join(". "), ok ? "ok" : "warn");
+            log.info("tts", parts.join(". "));
+          }
+        );
+        return;
       case "recent.reset":
         this.recent.reset();
         log.info("recent", "лента последних донатов очищена");
@@ -492,6 +600,7 @@ export class App {
       donatello: next.donatello,
     });
     this.nowPlaying.configure(next.nowplaying);
+    this.tts.configure(next.tts);
 
     if (portChanged) log.warn("server", "порт сменится после перезапуска");
 
@@ -503,6 +612,23 @@ export class App {
     this.pushTrack();
     this.hub.broadcast("/ws/screamer", { type: "hello", opacity: next.screamer.opacity });
   }
+}
+
+/**
+ * Случайный элемент, по возможности не тот же, что в прошлый раз. Пусто —
+ * значит медиа у тира нет, и это нормальный случай, а не ошибка.
+ */
+function pickOne(items, previous) {
+  if (!items.length) return null;
+  if (items.length === 1) return items[0];
+  const choices = items.filter((item) => item !== previous);
+  return choices[Math.floor(Math.random() * choices.length)];
+}
+
+function clamp01(value, fallback) {
+  const number = Number(value);
+  if (!Number.isFinite(number)) return fallback;
+  return Math.min(1, Math.max(0, number));
 }
 
 // Массивы (тиры алертов) заменяются целиком: иначе удалить тир или валюту

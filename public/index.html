@@ -285,6 +285,27 @@
         </div>
 
         <div class="card card--wide">
+          <h2>Файлы для алертов</h2>
+          <p class="note">
+            Гифки и звуки, из которых собираются алерты. Файлы лежат в папке
+            <code>media</code> рядом с конфигом — их видно из проводника, и обновление
+            программы их не затирает. Что показывать и что играть на каждом тире,
+            выбирается ниже, у самих тиров.
+          </p>
+          <div class="actions">
+            <label class="btn btn--primary">
+              Добавить гифку
+              <input type="file" id="m-image" accept="image/*" multiple hidden />
+            </label>
+            <label class="btn">
+              Добавить звук
+              <input type="file" id="m-sound" accept="audio/*" multiple hidden />
+            </label>
+          </div>
+          <div class="media" id="m-list"></div>
+        </div>
+
+        <div class="card card--wide">
           <h2>Алерты донатов</h2>
           <label class="switch">
             <input type="checkbox" id="a-enabled" />
@@ -297,7 +318,97 @@
             Пороги сравниваются с суммой в той же валюте — курсы не применяются;
             <code>default</code> — для валют, которых нет в списке.
           </p>
+          <label class="field">
+            <span>Громкость звуков: <b id="a-volume-view">0.8</b></span>
+            <input type="range" id="a-volume" min="0" max="1" step="0.05" />
+          </label>
+
           <div class="tiers" id="a-tiers"></div>
+        </div>
+
+        <div class="card">
+          <h2>Озвучка сообщений</h2>
+          <label class="switch">
+            <input type="checkbox" id="tts-enabled" />
+            <span>Читать сообщения вслух</span>
+          </label>
+          <p class="note">
+            Какие тиры читать — отмечается у самих тиров («Читать сообщение»). Здесь
+            только чем читать.
+          </p>
+
+          <label class="field">
+            <span>Чем читать</span>
+            <select id="tts-engine">
+              <option value="windows">голос Windows — бесплатно, офлайн, звучит роботом</option>
+              <option value="elevenlabs">ElevenLabs — живой голос, по твоему ключу</option>
+            </select>
+          </label>
+
+          <div class="actions">
+            <button class="btn" id="tts-refresh">Обновить голоса</button>
+          </div>
+
+          <!-- ============================ голос Windows ============================ -->
+          <div id="tts-windows">
+            <label class="field">
+              <span>Голос</span>
+              <select id="tts-voice-win"></select>
+            </label>
+            <label class="field">
+              <span>Скорость речи: <b id="tts-rate-view">0</b></span>
+              <input type="range" id="tts-rate" min="-10" max="10" step="1" />
+            </label>
+            <p class="note" id="tts-win-note"></p>
+          </div>
+
+          <!-- ============================== ElevenLabs ============================== -->
+          <div id="tts-eleven">
+            <label class="field">
+              <span>Ключ API</span>
+              <input type="password" id="tts-key" placeholder="ключ из личного кабинета ElevenLabs" />
+            </label>
+            <label class="field">
+              <span>Голос</span>
+              <input type="text" id="tts-voice" list="tts-voice-list"
+                     placeholder="id голоса — или выбери из списка аккаунта" />
+              <datalist id="tts-voice-list"></datalist>
+            </label>
+            <label class="field">
+              <span>Модель</span>
+              <select id="tts-model">
+                <option value="eleven_flash_v2_5">Flash v2.5 — вдвое дешевле, быстрее</option>
+                <option value="eleven_multilingual_v2">Multilingual v2 — качественнее</option>
+              </select>
+            </label>
+            <p class="note" id="tts-quota"></p>
+            <p class="note">
+              У ключа должны быть права на голоса, синтез и профиль — иначе ElevenLabs
+              откажет, и это не то же самое, что неверный ключ. Бесплатный план у них
+              некоммерческий, требует упоминания <code>elevenlabs.io</code> в заголовке
+              опубликованного и не даёт брать голоса из библиотеки через API: для стрима
+              с донатами нужен платный, от $6 в месяц. Ключ лежит в
+              <code>config.json</code> открытым текстом, как и ссылки на виджеты площадок.
+            </p>
+          </div>
+
+          <div class="field-row">
+            <label class="field">
+              <span>Длина сообщения, символов</span>
+              <input type="number" id="tts-max" step="10" min="20" max="1000" />
+            </label>
+            <label class="field switch-field">
+              <span>Имя донатера</span>
+              <label class="switch">
+                <input type="checkbox" id="tts-name" />
+                <span>читать перед сообщением</span>
+              </label>
+            </label>
+          </div>
+          <p class="note">
+            Ссылки из сообщения выкидываются, длина режется: у облака это прямые деньги,
+            у офлайнового голоса — минута чтения вслух.
+          </p>
         </div>
 
         <div class="card">
@@ -490,6 +601,22 @@
           цель — поставить в угол.
         </p>
         <ul class="urls" id="obs-urls"></ul>
+
+        <h2 class="mt">Данные и обновление</h2>
+        <p class="note">
+          Настройки, таблица донатеров, лента и гифки лежат <b>не в папке программы</b>,
+          а в профиле пользователя. Поэтому обновление ничего не теряет: распаковал
+          новый архив куда угодно, запустил — всё на месте.
+        </p>
+        <div class="actions">
+          <span class="url" id="data-dir"></span>
+          <button class="btn btn--ghost" id="data-open">Открыть папку</button>
+        </div>
+        <p class="note">
+          Чтобы носить программу с собой (например на флешке), положи рядом с
+          <code>rinkaStreamTools.exe</code> пустую папку <code>data</code> — тогда всё
+          будет храниться в ней, а не в профиле.
+        </p>
 
         <h2 class="mt">Скримеры на своём экране</h2>
         <p class="note">

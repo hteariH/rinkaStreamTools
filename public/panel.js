@@ -144,6 +144,21 @@ bind("dt-url", "donatello.widgetUrl");
 bind("dt-rate", "donatello.rate", { type: "number" });
 
 bind("a-enabled", "alerts.enabled", { type: "checkbox" });
+
+bind("tts-enabled", "tts.enabled", { type: "checkbox" });
+bind("tts-engine", "tts.engine");
+bind("tts-max", "tts.maxChars", { type: "number" });
+bind("tts-name", "tts.readName", { type: "checkbox" });
+// У каждого движка своя ветка настроек: голос Windows и голос ElevenLabs — разные
+// вещи, и общее поле «голос» сбрасывалось бы при каждом переключении.
+bind("tts-voice-win", "tts.windows.voice");
+bind("tts-rate", "tts.windows.rate", { type: "number" });
+bind("tts-key", "tts.elevenlabs.apiKey");
+bind("tts-voice", "tts.elevenlabs.voiceId");
+bind("tts-model", "tts.elevenlabs.modelId");
+
+el("tts-rate").addEventListener("input", (e) => { el("tts-rate-view").textContent = e.target.value; });
+
 bind("s-enabled", "screamer.enabled", { type: "checkbox" });
 bind("s-base", "screamer.baseCurrency");
 
@@ -153,6 +168,10 @@ el("g-poll").addEventListener("input", (e) => {
 });
 el("s-duration").addEventListener("input", (e) => {
   patchConfig({ screamer: { durationMs: Math.max(1, Number(e.target.value) || 5) * 1000 } });
+});
+el("a-volume").addEventListener("input", (e) => { el("a-volume-view").textContent = e.target.value; });
+el("a-volume").addEventListener("change", (e) => {
+  patchConfig({ alerts: { volume: Number(e.target.value) } }, true);
 });
 el("s-opacity").addEventListener("change", (e) => {
   patchConfig({ screamer: { opacity: Number(e.target.value) } }, true);
@@ -244,14 +263,53 @@ el("recent-reset").addEventListener("click", () => {
   if (confirm("Очистить ленту последних донатов?")) send({ type: "recent.reset" });
 });
 
-/* --------------------------------------------------------------- музыка */
-
-el("np-test").addEventListener("click", () => {
-  send({ type: "test.track" });
-  toast("Демо-трек на оверлее");
-});
-
 /* ------------------------------------------------------------- скримеры */
+
+/* ------------------------------------------------------- файлы для алертов */
+
+/*
+ * Файлы едут на сервер телом запроса, имя — в адресе: панель грузит по одному,
+ * и multipart тут был бы разбором формы ради ничего. Список в панели обновит сам
+ * сервер — он рассылает состояние, когда папка меняется.
+ */
+for (const [id, what] of [["m-image", "гифка"], ["m-sound", "звук"]]) {
+  el(id).addEventListener("change", async (event) => {
+    const input = event.target;
+    const files = [...input.files];
+    // Поле сбрасываем сразу: иначе тот же файл вторым разом не выберется —
+    // change не сработает на неизменившемся значении.
+    input.value = "";
+
+    for (const file of files) {
+      try {
+        const response = await fetch("/media?name=" + encodeURIComponent(file.name), {
+          method: "POST",
+          body: file,
+        });
+        const result = await response.json().catch(() => ({}));
+        if (!response.ok) throw new Error(result.error || "не загрузилось");
+        toast(`Добавлено: ${result.name}`, "ok");
+      } catch (error) {
+        toast(`${what} «${file.name}»: ${error.message}`, "warn");
+      }
+    }
+  });
+}
+
+el("m-list").addEventListener("click", async (event) => {
+  const button = event.target.closest(".drop");
+  if (!button) return;
+  const name = button.dataset.name;
+  if (!confirm(`Убрать «${name}» из папки media?`)) return;
+
+  try {
+    const response = await fetch("/media?name=" + encodeURIComponent(name), { method: "DELETE" });
+    if (!response.ok) throw new Error("не удалилось");
+    toast("Файл убран", "ok");
+  } catch (error) {
+    toast(error.message, "warn");
+  }
+});
 
 /* ----------------------------------------------------------------- тиры */
 
@@ -305,11 +363,34 @@ el("a-tiers").addEventListener("input", (event) => {
 el("a-tiers").addEventListener("change", (event) => {
   const input = event.target;
   const index = Number(input.closest("[data-index]")?.dataset.index);
-  if (!Number.isInteger(index) || input.type !== "checkbox") return;
+  if (!Number.isInteger(index)) return;
+
+  if (input.dataset.field === "theme") {
+    patchTiers((tiers) => { tiers[index].theme = input.value; });
+    return;
+  }
+
+  // Выпадающий список медиа работает как кнопка «добавить»: выбранное уезжает в
+  // список тира, а сам список возвращается к подписи.
+  if (input.dataset.add) {
+    const name = input.value;
+    input.value = "";
+    if (!name) return;
+    patchTiers((tiers) => {
+      const key = input.dataset.add;
+      const chosen = tiers[index][key] ?? [];
+      if (!chosen.includes(name)) tiers[index][key] = [...chosen, name];
+    });
+    return;
+  }
+
+  if (input.type !== "checkbox") return;
 
   const field = input.dataset.field || "";
   if (field === "screamer") {
     patchTiers((tiers) => { tiers[index].screamer = input.checked; });
+  } else if (field === "speak") {
+    patchTiers((tiers) => { tiers[index].speak = input.checked; });
   } else if (field.startsWith("src:")) {
     const source = field.slice(4);
     patchTiers((tiers) => {
@@ -323,6 +404,14 @@ el("a-tiers").addEventListener("click", (event) => {
   if (!button) return;
   const index = Number(button.closest("[data-index]")?.dataset.index);
   if (!Number.isInteger(index)) return;
+
+  if (button.classList.contains("chip__drop")) {
+    patchTiers((tiers) => {
+      const key = button.dataset.kind;
+      tiers[index][key] = (tiers[index][key] ?? []).filter((name) => name !== button.dataset.name);
+    });
+    return;
+  }
 
   if (button.classList.contains("drop")) {
     patchTiers((tiers) => { delete tiers[index].minAmounts[button.dataset.code]; });
@@ -440,7 +529,7 @@ function renderGoal(goal, config) {
   setValue(el("g-theme"), config.goal.theme);
 }
 
-function renderConfig(config) {
+function renderConfig(config, media) {
   setValue(el("r-theme"), config.raffle.theme);
   setValue(el("r-axelchat"), config.raffle.axelchatUrl);
   setChecked(el("r-autodraw"), config.raffle.autoDrawOnTimer);
@@ -462,7 +551,10 @@ function renderConfig(config) {
 
   if (!el("t-currency").value) el("t-currency").value = config.goal.currency;
 
-  renderTiers(currentTiers(config.alerts.tiers));
+  setValue(el("a-volume"), config.alerts.volume);
+  el("a-volume-view").textContent = config.alerts.volume;
+
+  renderTiers(currentTiers(config.alerts.tiers), media);
 }
 
 const SOURCE_FIELDS = [
@@ -470,15 +562,34 @@ const SOURCE_FIELDS = [
   ["donatello", "Donatello"],
 ];
 
-function renderTiers(tiers) {
+const MEDIA_KINDS = [
+  ["images", "Гифки"],
+  ["sounds", "Звуки"],
+];
+
+function renderTiers(tiers, media) {
   const box = el("a-tiers");
-  // Разметку пересобираем только когда изменился состав тиров или валют в них:
-  // иначе поле, в котором печатают порог, теряло бы курсор на каждом ответе сервера.
-  const shape = tiers.map((tier) => `${tier.id}:${Object.keys(tier.minAmounts).join(",")}`).join("|");
+  const library = {
+    images: (media?.images ?? []).map((file) => file.name),
+    sounds: (media?.sounds ?? []).map((file) => file.name),
+  };
+
+  // Разметку пересобираем только когда изменился состав тиров, валют или медиа
+  // в них: иначе поле, в котором печатают порог, теряло бы курсор на каждом
+  // ответе сервера. Список файлов сюда же — из него собраны выпадающие списки.
+  const shape = tiers
+    .map((tier) => [
+      tier.id,
+      Object.keys(tier.minAmounts).join(","),
+      (tier.images ?? []).join(","),
+      (tier.sounds ?? []).join(","),
+    ].join(":"))
+    .concat(library.images.join(","), library.sounds.join(","))
+    .join("|");
 
   if (box.dataset.shape !== shape) {
     box.dataset.shape = shape;
-    box.innerHTML = tiers.map(tierHtml).join("");
+    box.innerHTML = tiers.map((tier, index) => tierHtml(tier, index, library)).join("");
   }
 
   tiers.forEach((tier, index) => {
@@ -487,6 +598,8 @@ function renderTiers(tiers) {
     setValue(node.querySelector('[data-field="name"]'), tier.name);
     setValue(node.querySelector('[data-field="duration"]'), tier.durationMs / 1000);
     setChecked(node.querySelector('[data-field="screamer"]'), tier.screamer);
+    setChecked(node.querySelector('[data-field="speak"]'), tier.speak);
+    setValue(node.querySelector('[data-field="theme"]'), tier.theme || "default");
     for (const [key] of SOURCE_FIELDS) {
       setChecked(node.querySelector(`[data-field="src:${key}"]`), tier.sources?.[key] !== false);
     }
@@ -496,7 +609,43 @@ function renderTiers(tiers) {
   });
 }
 
-function tierHtml(tier, index) {
+const TIER_THEMES = [
+  ["default", "default — тёмная панель"],
+  ["slim", "slim — только текст"],
+  ["neon", "neon — циан по обсидиану"],
+  ["hud", "hud — капсула"],
+];
+
+/**
+ * Медиа тира: выбранные файлы фишками и выпадающий список, работающий как кнопка
+ * «добавить». Множественный select был бы короче, но им неудобно снимать один
+ * файл из пяти, а именно это и делают в эфире.
+ */
+function mediaPickerHtml(tier, kind, label, library) {
+  const chosen = tier[kind] ?? [];
+  const chips = chosen.length
+    ? chosen
+        .map(
+          (name) => `<span class="chip">${escapeHtml(name)}<button class="chip__drop"
+            data-kind="${kind}" data-name="${escapeHtml(name)}" title="убрать">×</button></span>`
+        )
+        .join("")
+    : `<span class="chip chip--empty">пусто</span>`;
+
+  const free = library[kind].filter((name) => !chosen.includes(name));
+  const options = free.map((name) => `<option value="${escapeHtml(name)}">${escapeHtml(name)}</option>`).join("");
+
+  return `<div class="picker">
+    <span class="picker__label">${label}</span>
+    <div class="chips">${chips}</div>
+    <select data-add="${kind}" ${library[kind].length ? "" : "disabled"}>
+      <option value="">${library[kind].length ? (free.length ? "добавить…" : "все уже выбраны") : "файлов нет"}</option>
+      ${options}
+    </select>
+  </div>`;
+}
+
+function tierHtml(tier, index, library) {
   const toggles = SOURCE_FIELDS.map(
     ([key, label]) => `<label class="switch switch--sm">
       <input type="checkbox" data-field="src:${key}" />
@@ -526,7 +675,18 @@ function tierHtml(tier, index) {
         <input type="checkbox" data-field="screamer" />
         <span>Скример</span>
       </label>
+      <label class="switch switch--sm">
+        <input type="checkbox" data-field="speak" />
+        <span>Читать сообщение</span>
+      </label>
     </div>
+    <label class="tier__theme">
+      <span>Тема</span>
+      <select data-field="theme">
+        ${TIER_THEMES.map(([value, label]) => `<option value="${value}">${label}</option>`).join("")}
+      </select>
+    </label>
+    ${MEDIA_KINDS.map(([kind, label]) => mediaPickerHtml(tier, kind, label, library)).join("")}
     <div class="tier__thresholds">${thresholds}</div>
     <div class="actions tier__add">
       <input type="text" class="inline-input inline-input--short new-code" placeholder="код" />
@@ -628,6 +788,118 @@ function renderNowPlaying(nowplaying, config) {
     : "Пока не видно ни одного плеера — включи музыку, и приложения появятся здесь.";
 }
 
+/** Медиатека: что лежит в папке media, с размерами и кнопкой убрать. */
+function renderMedia(media) {
+  const groups = MEDIA_KINDS.map(([kind, label]) => {
+    const files = media?.[kind] ?? [];
+    const rows = files.length
+      ? files
+          .map(
+            (file) => `<li>
+              <span class="who">${escapeHtml(file.name)}</span>
+              <span class="svc">${fmtSize(file.size)}</span>
+              <button class="drop" data-name="${escapeHtml(file.name)}" title="убрать">×</button>
+            </li>`
+          )
+          .join("")
+      : `<li class="media__empty">пока пусто</li>`;
+    return `<div class="media__group"><h3>${label}</h3><ul class="feed">${rows}</ul></div>`;
+  });
+
+  el("m-list").innerHTML = groups.join("");
+}
+
+function fmtSize(bytes) {
+  const size = Number(bytes) || 0;
+  if (size < 1024) return `${size} Б`;
+  if (size < 1024 * 1024) return `${Math.round(size / 1024)} КБ`;
+  return `${(size / 1024 / 1024).toFixed(1)} МБ`;
+}
+
+/**
+ * Озвучка. Ключ обратно с сервера не приходит вовсе — поле остаётся тем, что
+ * ввели, а панель показывает лишь, что ключ на сервере есть.
+ */
+function renderTts(tts, config) {
+  setChecked(el("tts-enabled"), config.tts.enabled);
+  setValue(el("tts-engine"), config.tts.engine);
+  setValue(el("tts-max"), config.tts.maxChars);
+  setChecked(el("tts-name"), config.tts.readName);
+
+  // Настройки чужого движка только мешают: ключа у голоса Windows нет, а скорости
+  // речи — у облака.
+  const windows = config.tts.engine === "windows";
+  el("tts-windows").hidden = !windows;
+  el("tts-eleven").hidden = windows;
+
+  const voices = tts?.voices ?? [];
+  renderWindowsVoices(voices, config, windows);
+  renderElevenVoices(voices, config);
+
+  el("tts-quota").textContent = quotaText(tts);
+}
+
+function renderWindowsVoices(voices, config, active) {
+  setValue(el("tts-rate"), config.tts.windows.rate);
+  el("tts-rate-view").textContent = config.tts.windows.rate;
+
+  const select = el("tts-voice-win");
+  const shape = voices.map((voice) => voice.id).join(",");
+  if (select.dataset.shape !== shape) {
+    select.dataset.shape = shape;
+    select.innerHTML =
+      `<option value="">голос по умолчанию</option>` +
+      voices
+        .map((voice) => `<option value="${escapeHtml(voice.id)}">${escapeHtml(voice.name)}</option>`)
+        .join("");
+  }
+  setValue(select, config.tts.windows.voice);
+
+  if (!active) return;
+
+  /*
+   * Голос читает только свой язык: английским голосом русское сообщение
+   * произносится молча. Это ловушка, в которую попадаешь уже в эфире, поэтому
+   * панель предупреждает заранее.
+   */
+  const hasRussian = voices.some((voice) => String(voice.culture || "").toLowerCase().startsWith("ru"));
+  el("tts-win-note").textContent = !voices.length
+    ? "Нажми «Обновить голоса» — список придёт из Windows."
+    : hasRussian
+      ? "Русский голос найден — сообщения будут читаться."
+      : "Русских голосов в списке нет: такой голос прочитает русское сообщение молча." +
+        " Поставить: Параметры → Время и язык → Речь → Добавить голоса → Русский." +
+        " Появиться в этом списке должен голос с пометкой ru-RU.";
+}
+
+function renderElevenVoices(voices, config) {
+  const list = el("tts-voice-list");
+  const shape = voices.map((voice) => voice.id).join(",");
+  if (list.dataset.shape !== shape) {
+    list.dataset.shape = shape;
+    list.innerHTML = voices
+      .map((voice) => `<option value="${escapeHtml(voice.id)}">${escapeHtml(voice.name)}</option>`)
+      .join("");
+  }
+  setValue(el("tts-voice"), config.tts.elevenlabs.voiceId);
+}
+
+function quotaText(tts) {
+  if (!tts?.hasKey) return "Ключ не задан — облачной озвучки не будет.";
+  // Поле ключа после перезагрузки панели пустое: обратно он не приходит вовсе.
+  // Без этой строчки выглядело бы так, будто ключ потерялся.
+  if (!tts.quota) return "Ключ сохранён на сервере (в поле он не показывается). Остаток лимита пока неизвестен — нажми «Обновить голоса».";
+
+  const { used, limit, resetsAt, plan } = tts.quota;
+  const left = Math.max(0, limit - used);
+  const when = resetsAt ? new Date(resetsAt).toLocaleDateString("ru-RU") : null;
+  return [
+    `План ${plan || "?"}: потрачено ${used} из ${limit} символов, осталось ${left}.`,
+    when ? `Лимит обновится ${when}.` : "",
+    limit ? `Это примерно ${Math.floor(left / 120)} сообщений по 120 символов.` : "",
+  ].filter(Boolean).join(" ");
+}
+
 function renderUrls(port) {
   const base = `http://localhost:${port}`;
   const items = [
@@ -650,6 +922,8 @@ function renderUrls(port) {
     )
     .join("");
 }
+
+el("data-open").addEventListener("click", () => send({ type: "data.open" }));
 
 el("obs-urls").addEventListener("click", (event) => {
   const button = event.target.closest(".copy");
@@ -698,13 +972,16 @@ function escapeHtml(value) {
 function render(next) {
   state = next;
   renderStatuses(next.status);
-  renderConfig(next.config);
+  renderMedia(next.media);
+  renderTts(next.tts, next.config);
+  renderConfig(next.config, next.media);
   renderRaffle(next.raffle);
   renderGoal(next.goal, next.config);
   renderTop(next.top, next.config);
   renderRecent(next.recent, next.config);
   renderNowPlaying(next.nowplaying, next.config);
   renderUrls(next.config.port);
+  el("data-dir").textContent = next.dataDir || "";
   if (next.log) renderLog(next.log);
 }
 

@@ -28,6 +28,15 @@
     }
     .alert.out { animation: out .45s ease-in both; }
 
+    /* Гифка над текстом и по центру. Высота ограничена долей экрана, а не
+       пикселями: источник в OBS растягивают под сцену, и гифка должна остаться
+       картинкой к алерту, а не занять весь кадр. */
+    .art {
+      display: block; margin: 0 auto 14px;
+      max-width: min(52vw, 520px); max-height: 38vh;
+      border-radius: 14px;
+    }
+
     .headline { font-size: clamp(24px, 3.4vw, 44px); font-weight: 800; line-height: 1.15; }
     .donor { color: #ffd54a; }
     .amount { color: #7CFC7C; white-space: nowrap; }
@@ -70,6 +79,46 @@
       text-transform: uppercase; opacity: .5;
     }
 
+    /* ============================================================
+       ТЕМЫ. Тир задаёт размер и заметность, тема — вид: одно поверх
+       другого, поэтому крупный донат остаётся крупным в любой теме.
+       ============================================================ */
+
+    /* slim — только текст, без панели */
+    .alert[data-theme="slim"] {
+      background: none; box-shadow: none; border: none; backdrop-filter: none;
+      padding: 6px 10px;
+    }
+    .alert[data-theme="slim"],
+    .alert[data-theme="slim"] * { text-shadow: 0 2px 10px #000, 0 0 3px #000; }
+
+    /* neon — циан по обсидиану, рамка и скан-линии */
+    .alert[data-theme="neon"] {
+      position: relative; border-radius: 8px;
+      background: rgba(4, 10, 16, .82);
+      border: 1px solid rgba(80, 230, 255, .55);
+      box-shadow: 0 0 26px rgba(0, 200, 255, .3), inset 0 0 26px rgba(0, 180, 255, .12);
+      font-family: "Consolas", monospace;
+    }
+    .alert[data-theme="neon"]::after {
+      content: ""; position: absolute; inset: 0; pointer-events: none; border-radius: 8px;
+      background: repeating-linear-gradient(180deg, rgba(0, 0, 0, .3) 0 2px, transparent 2px 4px);
+    }
+    .alert[data-theme="neon"] .donor { color: #8ff0ff; text-shadow: 0 0 14px rgba(80, 230, 255, .8); }
+    .alert[data-theme="neon"] .amount { color: #6ff0ff; text-shadow: 0 0 16px rgba(80, 230, 255, .9); }
+    .alert[data-theme="neon"] .art { border-radius: 4px; }
+
+    /* hud — капсула, подпись вразрядку */
+    .alert[data-theme="hud"] {
+      background: rgba(8, 8, 10, .9); border-radius: 26px;
+      border: 1px solid rgba(255, 255, 255, .22);
+      box-shadow: 0 6px 24px rgba(0, 0, 0, .5);
+      font-family: "Consolas", monospace;
+    }
+    .alert[data-theme="hud"] .donor { color: #fff; letter-spacing: .04em; }
+    .alert[data-theme="hud"] .amount { color: #3cdcf0; text-shadow: 0 0 14px rgba(60, 220, 240, .6); }
+    .alert[data-theme="hud"] .art { border-radius: 999px; max-height: 26vh; }
+
     @keyframes in {
       from { opacity: 0; transform: translateY(28px) scale(.9); }
       to   { opacity: 1; transform: translateY(0) scale(1); }
@@ -94,16 +143,28 @@
     /*
      * Оверлей алертов. Слушает /ws/alerts и показывает донаты по одному.
      *
-     * Звук: положи файл public/alert.mp3 рядом с оверлеями — он заиграет вместе
-     * с алертом. Нет файла — алерт просто молчит, ошибки в консоли не будет.
+     * Гифку, звук и тему выбирает сервер — у него лежит папка media/ и списки
+     * файлов по тирам. Оверлею приезжает уже готовое: одно имя картинки, одно
+     * имя звука и название темы.
      *
-     * Отладка: /alerts?demo — показать пример, ничего не ожидая от сервера.
+     * Общий звук на все алерты: файл public/alert.mp3 рядом с оверлеями. Он
+     * играет, когда у тира своих звуков не выбрано. Нет и его — алерт просто
+     * молчит, ошибки в консоли не будет.
+     *
+     * Отладка:
+     *   /alerts?demo       — показать пример, ничего не ожидая от сервера
+     *   /alerts?theme=neon — перебить тему, не трогая настройки
      */
     const SOUND_URL = "/alert.mp3";
+    // Насколько алерт готов задержаться ради длинного сообщения.
+    const VOICE_MAX_MS = 30000;
+    const THEMES = ["default", "slim", "neon", "hud"];
     const GAP_MS = 400;
 
     const stage = document.getElementById("stage");
     const params = new URLSearchParams(location.search);
+
+    const forcedTheme = THEMES.includes(params.get("theme")) ? params.get("theme") : null;
 
     const queue = [];
     let playing = false;
@@ -129,8 +190,60 @@
 
     const SOURCES = { donationAlerts: "DonationAlerts", donatello: "Donatello" };
 
+    /** Файл из медиатеки: имя в адресе кодируется — там бывают пробелы и кириллица. */
+    function mediaUrl(name) {
+      return "/media/" + encodeURIComponent(name);
+    }
+
+    /**
+     * Озвучка сообщения. Приезжает готовым mp3 по адресу от сервера — синтез уже
+     * случился, и оверлею остаётся только сыграть.
+     *
+     * Голос запускается после звукового эффекта, а не вместе с ним: одновременно
+     * их не разобрать, а эффект короткий.
+     */
+    function playVoice(data, after) {
+      if (!data.voice) return null;
+
+      const voice = new Audio(data.voice);
+      const start = () => voice.play().catch(() => { /* автовоспроизведение запретили */ });
+      if (after) {
+        after.addEventListener("ended", start, { once: true });
+        // Эффекта может не оказаться (файл убрали) — тогда ended не придёт вовсе.
+        after.addEventListener("error", start, { once: true });
+      } else {
+        start();
+      }
+      return voice;
+    }
+
+    function playSound(data) {
+      // Свой звук тира важнее общего: общий — это «хоть что-нибудь», а выбранный
+      // руками относится к конкретному тиру.
+      const url = data.sound ? mediaUrl(data.sound) : (hasSound ? SOUND_URL : null);
+      if (!url) return null;
+
+      const audio = new Audio(url);
+      const volume = Number(data.volume);
+      audio.volume = Number.isFinite(volume) ? Math.min(1, Math.max(0, volume)) : 0.8;
+      audio.play().catch(() => { /* автовоспроизведение запретили — алерт всё равно виден */ });
+      return audio;
+    }
+
     function show(data) {
       const card = node("div", `alert alert--${data.tier || "small"}`);
+      card.dataset.theme = forcedTheme || (THEMES.includes(data.theme) ? data.theme : "default");
+
+      // Картинка первой: пока грузится, текст уже на месте и не прыгает.
+      if (data.image) {
+        const art = node("img", "art");
+        art.src = mediaUrl(data.image);
+        art.alt = "";
+        // Файл могли убрать из папки между выбором и показом — тогда просто
+        // остаётся текстовый алерт, а не рамка от битой картинки в кадре.
+        art.addEventListener("error", () => art.remove());
+        card.appendChild(art);
+      }
 
       const headline = node("div", "headline");
       headline.appendChild(node("span", "donor", data.donorName || "Аноним"));
@@ -147,16 +260,34 @@
       stage.innerHTML = "";
       stage.appendChild(card);
 
-      if (hasSound) new Audio(SOUND_URL).play().catch(() => { /* автовоспроизведение запретили */ });
+      const effect = playSound(data);
+      const voice = playVoice(data, effect);
 
-      const duration = Number(data.durationMs) || 7000;
-      setTimeout(() => {
+      let done = false;
+      const finish = () => {
+        if (done) return;
+        done = true;
         card.classList.add("out");
         setTimeout(() => {
           stage.innerHTML = "";
           playing = false;
           playNext();
         }, GAP_MS);
+      };
+
+      const duration = Number(data.durationMs) || 7000;
+      setTimeout(() => {
+        // Сообщение длиннее, чем висит карточка: убирать её из-под голоса нельзя —
+        // зритель дослушивает то, чего уже не видно.
+        if (voice && !voice.ended && !voice.error) {
+          voice.addEventListener("ended", finish, { once: true });
+          voice.addEventListener("error", finish, { once: true });
+          // Если звук завис на чужой стороне, алерт всё равно уйдёт: очередь
+          // донатов не должна вставать из-за одного.
+          setTimeout(finish, VOICE_MAX_MS);
+          return;
+        }
+        finish();
       }, duration);
     }
 

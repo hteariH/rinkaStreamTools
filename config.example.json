@@ -25,9 +25,14 @@
   },
   "alerts": {
     "enabled": true,
+    "volume": 0.8,
     "tiers": [
       {
         "id": "small",
+        "speak": false,
+        "theme": "default",
+        "images": [],
+        "sounds": [],
         "name": "Мелкий",
         "durationMs": 5000,
         "screamer": false,
@@ -48,6 +53,10 @@
       },
       {
         "id": "medium",
+        "speak": false,
+        "theme": "default",
+        "images": [],
+        "sounds": [],
         "name": "Средний",
         "durationMs": 7000,
         "screamer": true,
@@ -68,6 +77,10 @@
       },
       {
         "id": "big",
+        "speak": false,
+        "theme": "default",
+        "images": [],
+        "sounds": [],
         "name": "Крупный",
         "durationMs": 9000,
         "screamer": true,
@@ -99,6 +112,21 @@
     "speed": 40,
     "pollIntervalMs": 1500,
     "theme": "default"
+  },
+  "tts": {
+    "enabled": false,
+    "engine": "windows",
+    "readName": true,
+    "maxChars": 200,
+    "windows": {
+      "voice": "",
+      "rate": 0
+    },
+    "elevenlabs": {
+      "apiKey": "",
+      "voiceId": "",
+      "modelId": "eleven_flash_v2_5"
+    }
   },
   "screamer": {
     "enabled": false,

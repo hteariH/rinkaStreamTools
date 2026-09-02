@@ -97,13 +97,26 @@ main { padding: 0 24px; max-width: 1240px; margin: 0 auto; }
 .field-row { display: flex; gap: 12px; }
 .field-row .field { flex: 1; }
 
-input[type="text"], input[type="number"], select {
+/* Ключ API — поле того же вида, что остальные: type="password" сюда попадает
+   отдельным селектором, под общий он не подходит. */
+input[type="text"], input[type="number"], input[type="password"], select {
   width: 100%; padding: 9px 12px; font: inherit;
   background: var(--card-2); color: var(--text);
   border: 1px solid var(--line); border-radius: 9px;
 }
 input:focus, select:focus { outline: none; border-color: var(--gold); }
+/* Ключ набирают редко, а видно его быть не должно — но и читать «••••» шрифтом
+   заголовка незачем. */
+input[type="password"] { font-family: Consolas, monospace; letter-spacing: .08em; }
 input[type="range"] { width: 100%; accent-color: var(--gold); }
+
+/* Выбор цвета: сам образец и кнопка сброса в одну строку. */
+.color-row { display: flex; gap: 8px; align-items: center; }
+.color-row input[type="color"] {
+  width: 54px; height: 38px; padding: 2px; cursor: pointer;
+  background: var(--card-2); border: 1px solid var(--line); border-radius: 9px;
+}
+.color-row .btn { padding: 9px 12px; }
 
 .switch { display: flex; align-items: center; gap: 10px; cursor: pointer; font-weight: 600; }
 .switch input { width: 18px; height: 18px; accent-color: var(--green); cursor: pointer; }
@@ -144,6 +157,25 @@ input[type="range"] { width: 100%; accent-color: var(--gold); }
    атрибут hidden на них не действует. */
 .field[hidden], .note[hidden] { display: none; }
 
+/* Поле-переключатель в ряду: галочка вместо ввода, но выглядит как поле. */
+.switch-field .switch { padding: 9px 0; font-weight: 500; font-size: 13px; }
+
+/* Правимые списки: крестик появляется у строки под курсором, чтобы список не
+   выглядел рядом кнопок. */
+.feed--editable li, .top-list--editable li { position: relative; padding-right: 28px; }
+.top-list--editable li .drop { position: absolute; right: 6px; top: 6px; opacity: 0; }
+.top-list--editable li:hover .drop, .top-list--editable li .drop:focus { opacity: 1; }
+.top-list--editable li.is-hidden-row { opacity: .55; }
+.top-list .drop {
+  border: 0; background: transparent; color: var(--muted); cursor: pointer;
+  font-size: 16px; line-height: 1; padding: 2px 6px; border-radius: 6px;
+}
+.top-list .drop:hover { color: var(--red); background: rgba(255, 107, 107, .12); }
+/* Кто не попадает на оверлей — виден, но приглушён: править его тоже надо. */
+.feed--editable li.is-hidden-row .who { color: var(--muted); }
+.feed--editable li .drop { position: absolute; right: 6px; top: 6px; opacity: 0; }
+.feed--editable li:hover .drop, .feed--editable li .drop:focus { opacity: 1; }
+
 .timer {
   font-size: 34px; font-weight: 800; font-variant-numeric: tabular-nums;
   color: var(--gold);
@@ -163,11 +195,11 @@ input[type="range"] { width: 100%; accent-color: var(--gold); }
 .people li.is-drawn { opacity: .45; }
 .people .who { flex: 1; }
 .people .svc { font-size: 11px; color: var(--muted); text-transform: uppercase; letter-spacing: .06em; }
-.people .drop {
+.people .drop, .feed .drop {
   border: 0; background: transparent; color: var(--muted); cursor: pointer;
   font-size: 16px; line-height: 1; padding: 2px 6px; border-radius: 6px;
 }
-.people .drop:hover { color: var(--red); background: rgba(255, 107, 107, .12); }
+.people .drop:hover, .feed .drop:hover { color: var(--red); background: rgba(255, 107, 107, .12); }
 
 /* ------------------------------------------------------------------ цель */
 
@@ -261,6 +293,38 @@ input[type="range"] { width: 100%; accent-color: var(--gold); }
 }
 .tier__add .inline-input { min-width: 0; }
 .tier__add .add { grid-column: 1 / -1; }
+
+/* ------------------------------------------------- медиа алертов */
+
+/* Список файлов в две колонки: гифки и звуки рядом, а не одной простынёй. */
+.media { display: grid; gap: 18px; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); margin-top: 14px; }
+.media__group h3 { margin-top: 0; }
+.media__empty { color: var(--muted); font-size: 13px; }
+.media .feed li .drop { margin-left: auto; }
+
+/* Файл, выбранный у тира, — фишкой с крестиком: снять один из пяти мышкой
+   проще, чем разбираться с множественным выбором в списке. */
+.picker { margin-top: 12px; }
+.picker__label { display: block; font-size: 13px; color: var(--muted); margin-bottom: 6px; }
+.picker select { margin-top: 6px; }
+
+.chips { display: flex; flex-wrap: wrap; gap: 6px; }
+.chip {
+  display: inline-flex; align-items: center; gap: 6px;
+  padding: 4px 6px 4px 10px; border-radius: 999px;
+  background: var(--card); border: 1px solid var(--line);
+  font-size: 12px; max-width: 100%;
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+.chip--empty { color: var(--muted); padding-right: 10px; }
+.chip__drop {
+  border: none; background: none; color: var(--muted); cursor: pointer;
+  font: inherit; font-size: 14px; line-height: 1; padding: 0 2px;
+}
+.chip__drop:hover { color: var(--red); }
+
+.tier__theme { display: block; margin-top: 12px; }
+.tier__theme > span { display: block; font-size: 13px; color: var(--muted); margin-bottom: 6px; }
 
 .thresholds { display: flex; flex-direction: column; gap: 8px; }
 .threshold { display: flex; align-items: center; gap: 10px; }
