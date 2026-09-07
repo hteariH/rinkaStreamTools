@@ -52,6 +52,10 @@ const EN = {
   "донат {amount} {currency} от {name}": "donation of {amount} {currency} from {name}",
   "анонима": "anonymous",
   "тир не подошёл — ни алерта, ни скримера": "no tier matched — no alert and no screamer",
+  "алерты выключены — ни алерта, ни скримера": "alerts are off — no alert and no screamer",
+  "у тира «{tier}» скример не включён": "the {tier} tier has no screamer switched on",
+  "скримеры выключены — тир «{tier}» его бы показал":
+    "screamers are off — the {tier} tier would have shown one",
   "тир «{tier}» ({amount} {currency} ≥ {threshold})": "tier {tier} ({amount} {currency} >= {threshold})",
   "таблица донатеров очищена": "the donor table is cleared",
   "лента последних донатов очищена": "the recent donations feed is cleared",

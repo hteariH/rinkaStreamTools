@@ -210,7 +210,13 @@ export class App {
       this.pushRecent();
     }
 
-    if (!this.config.alerts.enabled) return;
+    // Три выключателя подряд молчали бы одинаково — «донат пришёл, и ничего».
+    // Разобраться, какой именно из них закрыт, по логу было невозможно, поэтому
+    // каждый отказ теперь называет себя.
+    if (!this.config.alerts.enabled) {
+      log.info(donation.source, t("алерты выключены — ни алерта, ни скримера"));
+      return;
+    }
 
     const match = tierFor(donation, this.config.alerts.tiers, this.config.screamer.baseCurrency);
     if (!match) {
@@ -252,14 +258,21 @@ export class App {
 
     // Скример — свойство тира: на мелкие донаты он обычно не нужен, а на крупные
     // страница сама подберёт вариацию посильнее по имени тира.
-    if (tier.screamer && this.config.screamer.enabled) {
-      this.hub.broadcast("/ws/screamer", {
-        ...donation,
-        type: "screamer",
-        tier: tier.id,
-        durationMs: Number(this.config.screamer.durationMs) || 5000,
-      });
+    if (!tier.screamer) {
+      log.info(donation.source, t("у тира «{tier}» скример не включён", { tier: tier.name }));
+      return;
     }
+    if (!this.config.screamer.enabled) {
+      log.info(donation.source, t("скримеры выключены — тир «{tier}» его бы показал", { tier: tier.name }));
+      return;
+    }
+
+    this.hub.broadcast("/ws/screamer", {
+      ...donation,
+      type: "screamer",
+      tier: tier.id,
+      durationMs: Number(this.config.screamer.durationMs) || 5000,
+    });
   }
 
   /**
