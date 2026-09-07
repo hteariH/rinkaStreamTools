@@ -55,7 +55,8 @@ jobs:
             'dist/server/rinkaStreamTools-server.exe',
             'dist/server/public/index.html',
             'dist/server/public/overlay/screamer.js',
-            'dist/server/src/nowplaying/session.ps1'
+            'dist/server/src/nowplaying/session.ps1',
+            'dist/server/src/counter/hotkeys.ps1'
           ) | Where-Object { -not (Test-Path $_) }
           if ($missing) { throw "не собралось: $($missing -join ', ')" }
 

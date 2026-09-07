@@ -26,6 +26,7 @@
     <button class="tab is-active" data-tab="raffle">Розыгрыш</button>
     <button class="tab" data-tab="donations">Донаты</button>
     <button class="tab" data-tab="poll">Опрос</button>
+    <button class="tab" data-tab="counter">Счётчик</button>
     <button class="tab" data-tab="music">Музыка</button>
     <button class="tab" data-tab="obs">Источники для OBS</button>
     <button class="tab" data-tab="log">Лог</button>
@@ -634,6 +635,108 @@
               </select>
             </label>
           </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ======================================================= СЧЁТЧИК -->
+    <section class="page" data-page="counter">
+      <div class="grid">
+        <div class="card">
+          <h2>Счётчик</h2>
+          <p class="note">
+            Смерти, победы, «сколько раз я это сказал» — что угодно, что считается
+            вслух. Кнопки есть и тут, но смысл в горячей клавише: жать её можно,
+            не отрываясь от игры.
+          </p>
+
+          <div class="stat-row">
+            <div class="stat">
+              <span class="stat__value" id="cnt-value">0</span>
+              <span class="stat__label">сейчас на оверлее</span>
+            </div>
+          </div>
+
+          <div class="actions">
+            <button class="btn btn--primary" id="cnt-plus">Прибавить</button>
+            <button class="btn" id="cnt-minus">Убавить</button>
+            <button class="btn btn--danger" id="cnt-reset">Обнулить</button>
+          </div>
+
+          <label class="switch mt-sm">
+            <input type="checkbox" id="cnt-enabled" />
+            <span>Показывать счётчик на оверлее</span>
+          </label>
+
+          <div class="field-row">
+            <label class="field">
+              <span>Подпись</span>
+              <input type="text" id="cnt-title" placeholder="Смертей" />
+            </label>
+            <label class="field">
+              <span>Шаг</span>
+              <input type="number" id="cnt-step" min="1" step="1" />
+            </label>
+          </div>
+
+          <div class="field-row">
+            <label class="field">
+              <span>Поставить значение</span>
+              <input type="number" id="cnt-set" step="1" />
+            </label>
+            <label class="field">
+              <span>Тема оверлея</span>
+              <select id="cnt-theme">
+                <option value="default">default — тёмная панель, золото</option>
+                <option value="slim">slim — только текст, без панели</option>
+                <option value="neon">neon — циан по обсидиану</option>
+                <option value="hud">hud — капсула</option>
+              </select>
+            </label>
+          </div>
+
+          <label class="switch">
+            <input type="checkbox" id="cnt-negative" />
+            <span>Разрешить отрицательные значения</span>
+          </label>
+          <p class="note">
+            Обычно счёт ниже нуля не опускается: «Смертей: -1» выглядит поломкой, а не
+            счётом. Включи, если считаешь то, что и правда уходит в минус.
+          </p>
+        </div>
+
+        <div class="card">
+          <h2>Горячие клавиши</h2>
+          <p class="note">
+            Клавиша слышна, даже когда панель не в фокусе, — жать можно прямо из игры.
+            Нажатие при этом достаётся и игре тоже: программа смотрит на клавиатуру, а
+            не перехватывает кнопку, так что вешать счётчик на клавишу, которой в игре
+            что-то делают, можно спокойно. Только Windows.
+          </p>
+
+          <div class="hotkeys" id="cnt-hotkeys">
+            <div class="hotkey-row">
+              <span class="hotkey__what">Прибавить</span>
+              <button class="btn hotkey" data-hotkey="plus" id="cnt-hk-plus">не задана</button>
+              <button class="btn btn--ghost" data-hotkey-clear="plus" title="убрать">×</button>
+            </div>
+            <div class="hotkey-row">
+              <span class="hotkey__what">Убавить</span>
+              <button class="btn hotkey" data-hotkey="minus" id="cnt-hk-minus">не задана</button>
+              <button class="btn btn--ghost" data-hotkey-clear="minus" title="убрать">×</button>
+            </div>
+            <div class="hotkey-row">
+              <span class="hotkey__what">Обнулить</span>
+              <button class="btn hotkey" data-hotkey="reset" id="cnt-hk-reset">не задана</button>
+              <button class="btn btn--ghost" data-hotkey-clear="reset" title="убрать">×</button>
+            </div>
+          </div>
+
+          <p class="note" id="cnt-hk-note"></p>
+          <p class="note">
+            Жми на клавишу в строке и нажимай ту, что хочешь повесить, — можно с Ctrl,
+            Alt и Shift. Escape отменяет запись, «×» убирает клавишу совсем.
+          </p>
         </div>
       </div>
     </section>

@@ -13,6 +13,8 @@ import { log } from "./log.js";
 import { saveConfig } from "./config.js";
 import { Raffle } from "./raffle/raffle.js";
 import { Poll } from "./poll/poll.js";
+import { Counter } from "./counter/counter.js";
+import { Hotkeys } from "./counter/hotkeys.js";
 import { AxelChatClient } from "./raffle/axelchat.js";
 import { DonationAlertsSource } from "./donations/donationalerts.js";
 import { DonatelloSource } from "./donations/donatello.js";
@@ -45,6 +47,15 @@ export class App {
     this.poll = new Poll(config.poll);
     this.pollTimer = null;
     this.pollPush = null;
+
+    // Счётчик смертей и всего, что стример считает вслух. Кнопки в панели у него
+    // есть, но смысл в горячих клавишах: жать, не отрываясь от игры, — поэтому
+    // рядом живёт опрос клавиатуры.
+    this.counter = new Counter(config.counter);
+    this.hotkeys = new Hotkeys(config.counter.hotkeys);
+    // Значение пишется в конфиг с задержкой: за минуту эфира клавишу жмут
+    // несколько раз, и каждое нажатие не должно идти на диск.
+    this.counterSave = null;
 
     this.axelchat = new AxelChatClient(config.raffle.axelchatUrl);
     this.axelchatStatus = "off";
@@ -99,6 +110,7 @@ export class App {
         "/ws/recent": () => this.recentSnapshot(),
         "/ws/track": () => this.trackSnapshot(),
         "/ws/poll": () => this.pollSnapshot(),
+        "/ws/counter": () => this.counterSnapshot(),
         // Алерты и скримеры — поток событий, начального состояния у них нет:
         // оверлей, подключившийся после доната, показывать его задним числом не должен.
         "/ws/alerts": () => this.alertsHello(),
@@ -129,8 +141,10 @@ export class App {
     this._wireSource("donatello", this.donatello);
 
     this._wireNowPlaying();
+    this._wireHotkeys();
 
     this.axelchat.start();
+    this.hotkeys.start();
     this.donationAlerts.start();
     this.donatello.start();
     this.goal.start();
@@ -176,6 +190,20 @@ export class App {
     this.nowPlaying.on("log", (text) => log.info("track", text));
     // Список приложений идёт только в панель: на оверлее ему делать нечего.
     this.nowPlaying.on("apps", () => this.pushControl());
+  }
+
+  /**
+   * Горячие клавиши счётчика. Действий три — прибавить, убавить, обнулить, — и
+   * все они делают ровно то же, что кнопки в панели: один путь, одна запись в
+   * лог, одна рассылка.
+   */
+  _wireHotkeys() {
+    this.hotkeys.on("press", (action) => {
+      if (action === "reset") this.setCounter(0, t("клавишей"));
+      else this.setCounter(this.counter.value + (action === "minus" ? -this.counter.step : this.counter.step), t("клавишей"));
+    });
+    this.hotkeys.on("log", (text) => log.info("counter", text));
+    this.hotkeys.on("status", () => this.pushControl());
   }
 
   _wireSource(key, source) {
@@ -443,6 +471,45 @@ export class App {
     }, 300);
   }
 
+  pushCounter() {
+    this.hub.broadcast("/ws/counter", this.counterSnapshot());
+    this.pushControl();
+  }
+
+  counterSnapshot() {
+    return this.withLang(this.counter.snapshot(this.config.counter.theme || "default"));
+  }
+
+  /**
+   * Поставить счётчику значение и рассказать об этом всем. `how` — откуда пришло
+   * (клавишей или из панели): в логе это единственное, чем два пути отличаются.
+   */
+  setCounter(value, how) {
+    if (!this.counter.set(value)) return false;
+    log.info("counter", t("{title}: {value} ({how})", {
+      title: this.config.counter.title || t("счётчик"),
+      value: this.counter.value,
+      how,
+    }));
+    this.saveCounterSoon();
+    this.pushCounter();
+    return true;
+  }
+
+  /**
+   * Значение в конфиг — с задержкой. В самом конфиге оно обновляется сразу:
+   * иначе настройки, сохранённые из панели между нажатиями, унесли бы на диск
+   * старое число.
+   */
+  saveCounterSoon() {
+    this.config.counter.value = this.counter.value;
+    if (this.counterSave) return;
+    this.counterSave = setTimeout(() => {
+      this.counterSave = null;
+      saveConfig(this.config).catch((error) => log.warn("counter", t("счёт не сохранился: {error}", { error: error.message })));
+    }, 2000);
+  }
+
   pollSnapshot() {
     return this.withLang(this.poll.snapshot(this.config.poll.theme || "default"));
   }
@@ -504,6 +571,7 @@ export class App {
       // строкой на оверлее.
       recent: { donations: this.recent.history() },
       poll: this.pollSnapshot(),
+      counter: this.counterSnapshot(),
       media: this.mediaFiles,
       // Где лежат настройки и данные: без этого «куда делись мои донаты после
       // обновления» не на что ответить.
@@ -519,6 +587,9 @@ export class App {
         donationAlerts: this.donationAlerts.enabled ? this.donationAlerts.status : "off",
         donatello: this.donatello.enabled ? this.donatello.status : "off",
         nowplaying: this.nowPlaying.status,
+        // Слушается ли клавиатура. В панели это не лампочка наверху, а подпись в
+        // карточке счётчика: хоткеев может не быть вовсе, и это нормально.
+        hotkeys: this.hotkeys.status,
       },
       log: log.recent(),
     };
@@ -595,6 +666,19 @@ export class App {
         this.pollTimer = null;
         log.info("poll", t("опрос убран с оверлея"));
         this.pushPoll();
+        return;
+      case "counter.add":
+        this.setCounter(this.counter.value + (Number(message.delta) || this.counter.step), t("из панели"));
+        return;
+      case "counter.set":
+        if (!this.setCounter(message.value, t("из панели"))) {
+          // Ничего не изменилось — но панель ждёт ответа: поле могли поправить
+          // и вернуть обратно.
+          this.pushCounter();
+        }
+        return;
+      case "counter.reset":
+        this.setCounter(0, t("из панели"));
         return;
       case "top.remove": {
         if (!this.donors.remove(message.name)) {
@@ -804,6 +888,8 @@ export class App {
     });
     this.nowPlaying.configure(next.nowplaying);
     this.poll.configure(next.poll);
+    this.counter.configure(next.counter);
+    this.hotkeys.configure(next.counter.hotkeys);
     this.tts.configure(next.tts);
 
     if (portChanged) log.warn("server", t("порт сменится после перезапуска"));
@@ -815,6 +901,7 @@ export class App {
     this.pushRecent();
     this.pushTrack();
     this.pushPoll();
+    this.pushCounter();
     this.hub.broadcast("/ws/screamer", { type: "hello", opacity: next.screamer.opacity });
   }
 }

@@ -254,6 +254,36 @@ const EN = {
   "Переподключение...": "Reconnecting...",
   "Демонстрация": "Demo",
 
+  // --------------------------------------------------------- счётчик
+  "Счётчик": "Counter",
+  "Смерти, победы, «сколько раз я это сказал» — что угодно, что считается вслух. Кнопки есть и тут, но смысл в горячей клавише: жать её можно, не отрываясь от игры.":
+    "Deaths, wins, how many times you said that word — anything you count out loud. There are buttons here too, but the point is the hotkey: you can hit it without leaving the game.",
+  "сейчас на оверлее": "on the overlay now",
+  "Прибавить": "Add",
+  "Убавить": "Subtract",
+  "Обнулить": "Zero it",
+  "Показывать счётчик на оверлее": "Show the counter on the overlay",
+  "Подпись": "Caption",
+  "Шаг": "Step",
+  "Поставить значение": "Set the value",
+  "Смертей": "Deaths",
+  "Разрешить отрицательные значения": "Allow negative values",
+  "Обычно счёт ниже нуля не опускается: «Смертей: -1» выглядит поломкой, а не счётом. Включи, если считаешь то, что и правда уходит в минус.":
+    "The count normally stops at zero: \"Deaths: -1\" reads as a bug, not a score. Switch this on if you count something that really does go negative.",
+  "Горячие клавиши": "Hotkeys",
+  "Клавиша слышна, даже когда панель не в фокусе, — жать можно прямо из игры. Нажатие при этом достаётся и игре тоже: программа смотрит на клавиатуру, а не перехватывает кнопку, так что вешать счётчик на клавишу, которой в игре что-то делают, можно спокойно. Только Windows.":
+    "The key is heard even when the panel is not focused — you can press it from inside the game. The game still gets the keypress: the program watches the keyboard instead of grabbing the key, so binding the counter to a key the game already uses is fine. Windows only.",
+  "Жми на клавишу в строке и нажимай ту, что хочешь повесить, — можно с Ctrl, Alt и Shift. Escape отменяет запись, «×» убирает клавишу совсем.":
+    "Click the key in a row and press the one you want to bind — Ctrl, Alt and Shift work too. Escape cancels the recording, and × clears the key.",
+  "не задана": "not set",
+  "нажми клавишу…": "press a key…",
+  "Эту клавишу повесить нельзя — выбери другую": "That key cannot be bound — pick another one",
+  "Ни одной клавиши не задано — пока счётчик двигают кнопки выше.":
+    "No key is bound yet — for now the buttons above move the counter.",
+  "Клавиатура слушается — счётчик отзовётся и из игры.":
+    "The keyboard is being watched — the counter answers from inside the game too.",
+  "Клавиши не слушаются: смотри, что пишет лог.": "The keys are not being watched: see what the log says.",
+
   // ---------------------------------------------------- сейчас играет
   "Сейчас играет": "Now playing",
   "Показывать трек на оверлее": "Show the track on the overlay",

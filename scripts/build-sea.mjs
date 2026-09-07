@@ -78,11 +78,11 @@ await inject(serverPath, "NODE_SEA_BLOB", readFileSync(blob), {
 console.log("[5/6] Копирование public/ и приложения...");
 // Ресурсы ищутся рядом с бинарником сервера, поэтому лежат в server/, а не в корне.
 cpSync(path.join(root, "public"), path.join(serverDir, "public"), { recursive: true });
-// Опрос медиасессии и офлайновая озвучка сделаны скриптами на PowerShell: в
-// бандл они не попадают — их запускает отдельный процесс, а не Node. Путь
-// относительно бинарника тот же, что в исходниках, чтобы искать их в двух
-// режимах запуска не пришлось по-разному.
-for (const script of ["nowplaying/session.ps1", "tts/speak.ps1"]) {
+// Опрос медиасессии, офлайновая озвучка и горячие клавиши сделаны скриптами на
+// PowerShell: в бандл они не попадают — их запускает отдельный процесс, а не
+// Node. Путь относительно бинарника тот же, что в исходниках, чтобы искать их в
+// двух режимах запуска не пришлось по-разному.
+for (const script of ["nowplaying/session.ps1", "tts/speak.ps1", "counter/hotkeys.ps1"]) {
   cpSync(path.join(root, "src", script), path.join(serverDir, "src", script));
 }
 // Конфиг сервер создаст и сам при первом запуске; кладём образец, чтобы настройки

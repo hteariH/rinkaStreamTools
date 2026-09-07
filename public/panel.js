@@ -154,6 +154,12 @@ bind("p-title", "poll.title");
 bind("p-theme", "poll.theme");
 bind("p-seconds", "poll.seconds", { type: "number" });
 
+bind("cnt-enabled", "counter.enabled", { type: "checkbox" });
+bind("cnt-title", "counter.title");
+bind("cnt-step", "counter.step", { type: "number" });
+bind("cnt-theme", "counter.theme");
+bind("cnt-negative", "counter.allowNegative", { type: "checkbox" });
+
 bind("c-name", "colors.name", { type: "color" });
 bind("c-amount", "colors.amount", { type: "color" });
 
@@ -343,6 +349,107 @@ el("p-start").addEventListener("click", () => {
 
 el("p-stop").addEventListener("click", () => send({ type: "poll.stop" }));
 el("p-clear").addEventListener("click", () => send({ type: "poll.clear" }));
+
+/* -------------------------------------------------------------- счётчик */
+
+el("cnt-plus").addEventListener("click", () => send({ type: "counter.add" }));
+el("cnt-minus").addEventListener("click", () => send({ type: "counter.add", delta: -counterStep() }));
+el("cnt-reset").addEventListener("click", () => send({ type: "counter.reset" }));
+// Значение правится и руками: сбились на счёте — поправил, а не жал кнопку
+// двадцать раз.
+el("cnt-set").addEventListener("change", (event) => send({ type: "counter.set", value: Number(event.target.value) || 0 }));
+
+function counterStep() {
+  return Math.abs(Number(state?.config?.counter?.step)) || 1;
+}
+
+/*
+ * Запись горячей клавиши. Панель ловит нажатие в браузере, а слушает клавиатуру
+ * потом сервер — поэтому в конфиг уходит имя клавиши, как его называет браузер
+ * (KeyboardEvent.code): один формат на панель, конфиг и опрос клавиатуры.
+ *
+ * Раскладка тут ни при чём: code — это физическая клавиша, и хоткей не съедет,
+ * когда стример переключится на русскую раскладку посреди эфира.
+ */
+const HOTKEY_ACTIONS = ["plus", "minus", "reset"];
+// Что вообще можно повесить. Тот же список, что понимает сервер: не сойдутся —
+// клавиша молча не сработает, и понять почему будет неоткуда.
+const HOTKEY_CODE =
+  /^(?:Key[A-Z]|Digit[0-9]|Numpad(?:[0-9]|Add|Subtract|Multiply|Divide|Decimal|Enter)|F(?:[1-9]|1[0-9]|2[0-4])|Arrow(?:Up|Down|Left|Right)|Tab|Space|Enter|Backspace|Insert|Delete|Home|End|PageUp|PageDown)$/;
+// Читаемые имена: «Ctrl+Shift+KeyD» на экране панели выглядит отладочным выводом.
+const HOTKEY_LABELS = {
+  NumpadAdd: "Num +", NumpadSubtract: "Num −", NumpadMultiply: "Num *",
+  NumpadDivide: "Num /", NumpadDecimal: "Num .", NumpadEnter: "Num Enter",
+  ArrowUp: "↑", ArrowDown: "↓", ArrowLeft: "←", ArrowRight: "→",
+};
+
+let listening = null;
+
+el("cnt-hotkeys").addEventListener("click", (event) => {
+  const clear = event.target.closest("[data-hotkey-clear]");
+  if (clear) {
+    stopListening();
+    patchConfig({ counter: { hotkeys: { [clear.dataset.hotkeyClear]: "" } } }, true);
+    return;
+  }
+
+  const button = event.target.closest(".hotkey");
+  if (!button) return;
+  startListening(button.dataset.hotkey);
+});
+
+document.addEventListener("keydown", (event) => {
+  if (!listening) return;
+  // Пока ждём клавишу, она наша: иначе F5 перезагрузил бы панель вместо того,
+  // чтобы записаться в хоткей.
+  event.preventDefault();
+
+  if (event.code === "Escape") {
+    stopListening();
+    return;
+  }
+  // Один Ctrl — это ещё не хоткей: ждём клавишу, к которой он приставка.
+  if (["ControlLeft", "ControlRight", "AltLeft", "AltRight", "ShiftLeft", "ShiftRight", "MetaLeft", "MetaRight"].includes(event.code)) return;
+
+  if (!HOTKEY_CODE.test(event.code)) {
+    toast(t("Эту клавишу повесить нельзя — выбери другую"), "warn");
+    return;
+  }
+
+  const parts = [];
+  if (event.ctrlKey) parts.push("Ctrl");
+  if (event.altKey) parts.push("Alt");
+  if (event.shiftKey) parts.push("Shift");
+  parts.push(event.code);
+
+  const action = listening;
+  stopListening();
+  patchConfig({ counter: { hotkeys: { [action]: parts.join("+") } } }, true);
+});
+
+function startListening(action) {
+  if (!HOTKEY_ACTIONS.includes(action)) return;
+  stopListening();
+  listening = action;
+  const node = el(`cnt-hk-${action}`);
+  node.textContent = t("нажми клавишу…");
+  node.classList.add("is-listening");
+}
+
+function stopListening() {
+  if (!listening) return;
+  el(`cnt-hk-${listening}`).classList.remove("is-listening");
+  listening = null;
+  // Надпись вернётся сама: панель перерисовывает всё из последнего состояния.
+  if (state) renderCounter(state.counter, state.config, state.status);
+}
+
+function hotkeyLabel(hotkey) {
+  return hotkey
+    .split("+")
+    .map((part) => HOTKEY_LABELS[part] || part.replace(/^(?:Key|Digit)/, "").replace(/^Numpad/, "Num "))
+    .join(" + ");
+}
 
 /* ---------------------------------------------------------------- цвета */
 
@@ -1055,6 +1162,38 @@ function renderPoll(poll, config) {
       : t("Итог: {total} голосов.", { total: poll.total });
 }
 
+/**
+ * Счётчик. Число считает сервер: хоткей жмут мимо браузера, и держать своё
+ * значение в панели значило бы показывать не то, что на оверлее.
+ */
+function renderCounter(counter, config, status) {
+  el("cnt-value").textContent = counter.value;
+  setValue(el("cnt-set"), counter.value);
+  setValue(el("cnt-title"), config.counter.title);
+  setValue(el("cnt-step"), config.counter.step);
+  setValue(el("cnt-theme"), config.counter.theme);
+  setChecked(el("cnt-enabled"), config.counter.enabled);
+  setChecked(el("cnt-negative"), config.counter.allowNegative);
+
+  let bound = 0;
+  for (const action of HOTKEY_ACTIONS) {
+    const hotkey = config.counter.hotkeys?.[action] || "";
+    if (hotkey) bound += 1;
+    // Клавишу сейчас записывают — «нажми клавишу…» затирать нельзя.
+    if (listening === action) continue;
+
+    const node = el(`cnt-hk-${action}`);
+    node.textContent = hotkey ? hotkeyLabel(hotkey) : t("не задана");
+    node.classList.toggle("is-empty", !hotkey);
+  }
+
+  el("cnt-hk-note").textContent = !bound
+    ? t("Ни одной клавиши не задано — пока счётчик двигают кнопки выше.")
+    : status?.hotkeys === "on"
+      ? t("Клавиатура слушается — счётчик отзовётся и из игры.")
+      : t("Клавиши не слушаются: смотри, что пишет лог.");
+}
+
 function renderUrls(port) {
   const base = `http://localhost:${port}`;
   const items = [
@@ -1064,6 +1203,7 @@ function renderUrls(port) {
     ["Последние донаты", "/recent"],
     ["Сейчас играет", "/track"],
     ["Опрос в чате", "/poll"],
+    ["Счётчик", "/counter"],
     ["Алерты донатов", "/alerts"],
     ["Скримеры", "/screamer"],
   ];
@@ -1135,6 +1275,7 @@ function render(next) {
 
   renderStatuses(next.status);
   renderPoll(next.poll, next.config);
+  renderCounter(next.counter, next.config, next.status);
   renderColors(next.config);
   renderMedia(next.media);
   renderTts(next.tts, next.config);

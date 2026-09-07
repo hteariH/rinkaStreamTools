@@ -23,6 +23,7 @@ const EN = {
   "последние донаты": "recent donations",
   "сейчас играет": "now playing",
   "опрос в чате": "chat poll",
+  "счётчик": "counter",
   "алерты донатов": "donation alerts",
   "скримеры": "screamers",
 
@@ -85,6 +86,17 @@ const EN = {
   "опрос убран с оверлея": "the poll is off the overlay",
   "Нужны вопрос и хотя бы два варианта": "A question and at least two options are required",
   "Голосование и так не идёт": "No poll is running anyway",
+
+  // ----------------------------------------------------------- счётчик
+  "{title}: {value} ({how})": "{title}: {value} ({how})",
+  "клавишей": "by hotkey",
+  "из панели": "from the panel",
+  "счёт не сохранился: {error}": "the count was not saved: {error}",
+  "клавиша «{hotkey}» непонятна — задай её заново в панели":
+    "the {hotkey} key makes no sense — set it again in the panel",
+  "горячие клавиши пока только в Windows": "hotkeys are Windows-only for now",
+  "опрос клавиш не запустился: {error}": "the key watcher did not start: {error}",
+  "опрос клавиш прервался, перезапускаю…": "the key watcher stopped, restarting…",
 
   // ------------------------------------------------------ сейчас играет
   "тишина": "silence",

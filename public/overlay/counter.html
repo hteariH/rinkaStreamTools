@@ -1,0 +1,176 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>rinkaStreamTools — счётчик</title>
+  <style>
+    /* ===== База: прозрачный фон для Browser Source в OBS ===== */
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    html, body {
+      background: transparent; height: 100%; overflow: hidden;
+      font-family: "Segoe UI", Roboto, system-ui, sans-serif; color: #fff;
+    }
+
+    #app { padding: 10px; }
+
+    .box {
+      display: inline-flex; align-items: baseline; gap: 14px;
+      padding: 12px 20px;
+      /* Счётчик выключили — на экране пусто, а источник в OBS остаётся на месте. */
+      opacity: 0; transform: translateY(-6px);
+      transition: opacity .35s ease, transform .35s ease;
+    }
+    .box.show { opacity: 1; transform: none; }
+
+    .caption { font-size: 13px; letter-spacing: .18em; text-transform: uppercase; opacity: .78; white-space: nowrap; }
+    .caption:empty { display: none; }
+
+    /* Цифры моноширинные: иначе на каждой смене числа строка дёргалась бы. */
+    .value { font-size: 46px; font-weight: 800; line-height: 1; font-variant-numeric: tabular-nums; }
+
+    /* Число изменилось — короткий толчок. Иначе на экране, где счётчик стоит
+       весь эфир, смену цифры легко не заметить вовсе. */
+    .value.bump { animation: bump .45s cubic-bezier(.2, .8, .25, 1); }
+    @keyframes bump {
+      0% { transform: scale(1); }
+      35% { transform: scale(1.22); }
+      100% { transform: scale(1); }
+    }
+
+    /* ============================================================
+       ТЕМА: default — тёмная панель, золото
+       ============================================================ */
+    #app[data-theme="default"] .box {
+      background: rgba(15, 15, 25, .72); border-radius: 16px;
+      backdrop-filter: blur(4px); box-shadow: 0 6px 24px rgba(0, 0, 0, .45);
+      text-shadow: 0 2px 6px rgba(0, 0, 0, .6);
+    }
+    #app[data-theme="default"] .caption { color: #ffd54a; }
+
+    /* ============================================================
+       ТЕМА: slim — только текст, без панели
+       ============================================================ */
+    #app[data-theme="slim"] .box { padding: 0; }
+    #app[data-theme="slim"] .box,
+    #app[data-theme="slim"] .box * { text-shadow: 0 2px 8px #000; }
+
+    /* ============================================================
+       ТЕМА: neon — циан по обсидиану, рамка и скан-линии
+       ============================================================ */
+    #app[data-theme="neon"] .box {
+      position: relative;
+      background: rgba(4, 10, 16, .8);
+      border: 1px solid rgba(80, 230, 255, .5); border-radius: 8px;
+      box-shadow: 0 0 22px rgba(0, 200, 255, .28), inset 0 0 22px rgba(0, 180, 255, .12);
+      font-family: "Consolas", monospace;
+    }
+    #app[data-theme="neon"] .box::after {
+      content: ""; position: absolute; inset: 0; pointer-events: none; border-radius: 8px;
+      background: repeating-linear-gradient(180deg, rgba(0, 0, 0, .3) 0 2px, transparent 2px 4px);
+    }
+    #app[data-theme="neon"] .caption { color: #8ff0ff; text-shadow: 0 0 12px rgba(80, 230, 255, .8); }
+    #app[data-theme="neon"] .value { color: #d9fbff; text-shadow: 0 0 18px rgba(80, 230, 255, .7); }
+
+    /* ============================================================
+       ТЕМА: hud — капсула, подпись вразрядку
+       ============================================================ */
+    #app[data-theme="hud"] .box {
+      background: rgba(8, 8, 10, .88); border-radius: 999px; padding: 10px 24px;
+      border: 1px solid rgba(255, 255, 255, .22);
+      box-shadow: 0 4px 18px rgba(0, 0, 0, .5);
+      font-family: "Consolas", monospace;
+    }
+    #app[data-theme="hud"] .caption { letter-spacing: .3em; color: #3cdcf0; }
+
+    .offline {
+      position: fixed; bottom: 6px; right: 12px;
+      font-size: 12px; opacity: .5; display: none;
+    }
+    .offline.show { display: block; }
+  </style>
+</head>
+<body>
+  <div id="app" data-theme="default">
+    <div class="box" id="box">
+      <div class="caption" id="caption"></div>
+      <div class="value" id="value">0</div>
+    </div>
+  </div>
+  <div class="offline" id="offline">нет связи</div>
+
+  <script src="/i18n.js"></script>
+  <script>
+    /*
+     * Счётчик. Слушает /ws/counter.
+     *
+     * Считает сервер: клавишу жмут мимо браузера, и число сюда приезжает уже
+     * готовым. Страница только рисует его и подмигивает на смене.
+     *
+     * Отладка:
+     *   /counter?demo       — показать пример, ничего не ожидая от сервера
+     *   /counter?theme=neon — перебить тему, не трогая настройки
+     */
+    const el = (id) => document.getElementById(id);
+    const app = el("app");
+    const THEMES = ["default", "slim", "neon", "hud"];
+
+    const params = new URLSearchParams(location.search);
+    const forcedTheme = THEMES.includes(params.get("theme")) ? params.get("theme") : null;
+
+    let shown = null;
+
+    function render(next) {
+      if (!next || next.type !== "counter") return;
+
+      const theme = forcedTheme || (THEMES.includes(next.theme) ? next.theme : "default");
+      if (app.dataset.theme !== theme) app.dataset.theme = theme;
+
+      const box = el("box");
+      if (!next.visible) {
+        box.classList.remove("show");
+        return;
+      }
+
+      el("caption").textContent = next.title || "";
+
+      const value = el("value");
+      value.textContent = next.value;
+      // Толчок — только на настоящую смену числа: то же состояние прилетает и
+      // при переподключении, и при правке подписи.
+      if (shown !== null && shown !== next.value) {
+        value.classList.remove("bump");
+        // Перезапуск анимации: без чтения раскладки браузер не заметит, что
+        // класс вообще снимали.
+        void value.offsetWidth;
+        value.classList.add("bump");
+      }
+      shown = next.value;
+
+      box.classList.add("show");
+    }
+
+    let ws;
+    function connect() {
+      const proto = location.protocol === "https:" ? "wss" : "ws";
+      ws = new WebSocket(`${proto}://${location.host}/ws/counter`);
+      ws.onopen = () => el("offline").classList.remove("show");
+      ws.onmessage = (event) => {
+        try {
+          const message = JSON.parse(event.data);
+          i18n.setLang(message.lang);
+          render(message);
+        } catch {}
+      };
+      ws.onclose = () => { el("offline").classList.add("show"); setTimeout(connect, 1500); };
+      ws.onerror = () => { try { ws.close(); } catch {} };
+    }
+
+    if (params.has("demo")) {
+      render({ type: "counter", visible: true, title: "Смертей", value: 13, theme: params.get("theme") });
+    } else {
+      connect();
+    }
+  </script>
+</body>
+</html>

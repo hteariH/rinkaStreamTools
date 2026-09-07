@@ -34,6 +34,7 @@ overlays and the server log follow it.
 | Recent donations | `/recent` | a scrolling "name — amount" ticker |
 | Now playing | `/track` | the current track and artist, with cover art |
 | Chat poll | `/poll` | a question, the options and vote bars |
+| Counter | `/counter` | a captioned number moved by a hotkey |
 | Donation alerts | `/alerts` | "name — amount" and the message text |
 | Screamers | `/screamer` | a random screamer on a donation above a threshold |
 
@@ -144,6 +145,31 @@ discussed after the countdown; Hide removes the poll entirely. The countdown is 
 The leading option is highlighted **only after the poll closes and only if there is
 exactly one**: on a live vote the highlight would jump around, and calling the one higher
 up the list a winner on a tie would be a lie.
+
+### Counter
+
+Deaths, wins, how many times you said that word — a captioned number on the overlay. The
+buttons in the panel move it, but the point is the **hotkey**: it is heard even while the
+game is in focus, so you never switch to the panel to count.
+
+Keys are bound on the Counter tab: click the key in a row and press the one you want —
+Ctrl, Alt and Shift work too. Three actions: add, subtract, zero it. Escape cancels the
+recording, × clears the key.
+
+The game still gets the keypress: the program asks the system for the keyboard state
+instead of grabbing the key. So the counter can live on the very key the game already
+uses — counting deaths on the button you respawn with, say. The flip side is the same:
+the key is heard while you type in chat too, which makes the F row and the numpad a
+better home than letters.
+
+The keyboard is polled by a small PowerShell script (`src/counter/hotkeys.ps1`), the same
+way the media session is. That makes hotkeys **Windows-only**; without them the counter
+works everywhere from the panel buttons.
+
+The count survives a restart: the value lives in the config and is written there with a
+delay, so a keypress does not go to disk. The counter stops at zero — "Deaths: -1" reads
+as a bug rather than a score; if you count something that really does go negative, there
+is a tick for that.
 
 ### Donation platforms
 
@@ -419,6 +445,8 @@ with it. On non-Windows systems there is no media session at all: the file sourc
 | `/recent?speed=120` | tune the ticker speed live |
 | `/poll?demo` | show a sample poll, expecting nothing from the server |
 | `/poll?theme=neon` | override the poll theme without touching the settings |
+| `/counter?demo` | show a sample counter, expecting nothing from the server |
+| `/counter?theme=neon` | override the counter theme without touching the settings |
 | `/track?demo` | show a sample track card, expecting nothing from the server |
 | `/track?theme=neon` | the same for the now playing overlay |
 | `/track?speed=80` | tune the scrolling title speed live |

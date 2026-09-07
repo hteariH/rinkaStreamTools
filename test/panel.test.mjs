@@ -108,6 +108,7 @@ function state(patch = {}) {
     top: { donors: [], all: [], anonymous: { count: 0, total: 0 }, totalDonors: 0, currency: "USD", limit: 5 },
     recent: { donations: [] },
     poll: { visible: false, open: false, options: [], total: 0, seconds: 0 },
+    counter: { visible: true, title: "Смертей", value: 0 },
     media: { images: [], sounds: [] },
     tts: { engine: "windows", voices: [], quota: null, hasKey: false },
     nowplaying: { track: null, apps: [] },

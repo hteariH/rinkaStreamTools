@@ -78,3 +78,5 @@ export const MEDIA_DIR = path.join(DATA_DIR, "media");
 export const NOWPLAYING_SCRIPT = path.join(BASE_DIR, "src", "nowplaying", "session.ps1");
 // Офлайновая озвучка — тоже через PowerShell и по тому же правилу.
 export const TTS_SCRIPT = path.join(BASE_DIR, "src", "tts", "speak.ps1");
+// Горячие клавиши счётчика: клавиатуру опрашивает такой же скрипт.
+export const HOTKEYS_SCRIPT = path.join(BASE_DIR, "src", "counter", "hotkeys.ps1");
