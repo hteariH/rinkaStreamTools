@@ -71,8 +71,8 @@ main { padding: 0 24px; max-width: 1240px; margin: 0 auto; }
  * пустыми местами справа.
  *
  * Высоту карточки не ограничиваем: в ряду они тянутся до общей: иначе под низкой
- * остаётся дыра до следующего ряда — у «Скримеров» рядом с «Проверкой» это две
- * сотни пикселей пустоты, и ряды перестают читаться рядами.
+ * остаётся дыра до следующего ряда — сотни пикселей пустоты, и ряды перестают
+ * читаться рядами.
  */
 .grid {
   display: grid; gap: 18px;
@@ -303,8 +303,6 @@ input[type="range"] { width: 100%; accent-color: var(--gold); }
 .hotkey.is-empty { color: var(--muted); font-family: inherit; }
 .hotkey.is-listening { border-color: var(--gold); color: var(--gold); }
 .switch--sm input { width: 15px; height: 15px; }
-.switch--scream input { accent-color: var(--red); }
-.switch--scream { color: var(--red); }
 
 .tier__thresholds { display: flex; flex-direction: column; gap: 6px; }
 

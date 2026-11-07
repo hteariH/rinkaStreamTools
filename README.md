@@ -11,8 +11,8 @@ Unpack it and run `rinkaStreamTools.exe`. Nothing to install.
 
 A set of stream overlays that lives entirely on your own machine: a raffle driven by a
 chat command, a shared donation goal across several platforms, a top-donor board, a feed
-of recent donations, what is playing right now, a chat poll, donation alerts and
-screamers. Everything runs on a single local port — in OBS you add ordinary **Browser
+of recent donations, what is playing right now, a chat poll and donation
+alerts. Everything runs on a single local port — in OBS you add ordinary **Browser
 Source** items pointing at `http://localhost:3777/…`, and nothing is exposed to the
 outside world.
 
@@ -36,13 +36,9 @@ overlays and the server log follow it.
 | Chat poll | `/poll` | a question, the options and vote bars |
 | Counter | `/counter` | a captioned number moved by a hotkey |
 | Donation alerts | `/alerts` | "name — amount" and the message text |
-| Screamers | `/screamer` | a random screamer on a donation above a threshold |
 
 The control panel holds the settings, the entrant list, a test donation and the log. It
-opens inside the application window, so a streamer never needs a terminal. The same
-application also carries a transparent overlay window on top of the game for screamers: a
-Browser Source in OBS is seen by viewers only, and without that window the streamer would
-be the one person who never sees the screamer.
+opens inside the application window, so a streamer never needs a terminal.
 
 ## Getting started
 
@@ -263,20 +259,20 @@ other.
 ### Donation alerts by tier
 
 A donation lands in a **tier**, by amount. There are three tiers by default: small, medium
-and large. A tier sets how long the alert stays up, how loud it looks and whether a screamer
-fires.
+and large. A tier sets how long the alert stays up and how it looks.
 
-| Tier | Threshold, USD | Screamer |
-|---|---|---|
-| Small | from 1 | no |
-| Medium | from 5 | yes |
-| Large | from 20 | yes |
+| Tier | Threshold, USD |
+|---|---|
+| Small | from 1 |
+| Medium | from 5 |
+| Large | from 20 |
 
 Thresholds are set **in the currencies themselves**, with no exchange rates: a donation is
 compared against the threshold in the same currency it arrived in. `default` covers
 currencies that are not in the list. If there is no threshold for the donor's currency but
 DonationAlerts converted the amount itself (`amount_in_user_currency`), the converted amount
-in the base currency is what gets compared.
+in the base currency is what gets compared; the base currency is set in the panel, next to
+the tiers.
 
 **Every tier is enabled per platform.** If DonationAlerts already shows its own alerts and
 you would rather not duplicate them, switch those tiers off there, and only Donatello
@@ -361,39 +357,6 @@ The key is stored in `config.json` in plain text, just like the donation widget 
 never sent back to the panel: the field is empty after a reload, with a note next to it saying
 the key is on the server.
 
-### Screamers
-
-**Off by default** — they are switched on with a tick in the panel: this is the sort of thing
-you enable deliberately rather than discover live on air. Anyone who has already enabled them
-keeps their own setting.
-
-On a tier with screamers enabled the overlay plays a random effect out of seven variations (a
-lunge at the camera, a quick cut, a strobe, a flashlight, blood on the lens, VHS noise, a slow
-reveal) with a random image and sound from its own set.
-
-The variations differ in strength and are matched to the tier: the quick cut and the tape noise
-go to small and medium donations, the lunge, the strobe and the blood only to large ones. The
-same one never comes up twice in a row.
-
-**A check that does not scare anyone.** One of the variations is `heart` — a big heart instead
-of a face, with a soft chime instead of a scream. It tells you the overlay is alive, in the
-right place and at the right opacity, and testing that before a stream while flinching every
-time is impossible. Pick it in the panel or use `/screamer?variant=heart`. It never comes up on
-a real donation: it is excluded from the random pick.
-
-A hand-picked variation is shown on its own, past tiers and thresholds — otherwise a heart with
-a one-dollar amount would show nothing, because the small tier does not call a screamer.
-
-The "game coverage" slider sets the opacity — a screamer does not cover the picture completely.
-The value can also be tuned in the address: `/screamer?opacity=0.6`.
-
-The media lives in `public/screamers`: photos from Pexels (the license allows commercial use
-without attribution) run through color grading, and CC0 sounds from Freesound. Resident Evil
-assets are deliberately not used — they belong to Capcom and attract content claims on stream.
-
-Screamers on **your own** screen, not just the viewers', come from the second application
-window; see [desktop/README.md](desktop/README.md).
-
 ### Now playing
 
 The current track and artist as a card in the corner of the scene, with cover art and equalizer
@@ -452,11 +415,6 @@ with it. On non-Windows systems there is no media session at all: the file sourc
 | `/track?speed=80` | tune the scrolling title speed live |
 | `/alerts?demo` | show a sample alert, expecting nothing from the server |
 | `/alerts?theme=neon` | override the alert theme without touching the tier settings |
-| `/screamer?variant=heart` | the heart: a check that does not scare anyone |
-| `/screamer?demo` | run through every screamer variation |
-| `/screamer?variant=lunge` | always show one specific variation |
-| `/screamer?ping` | flash a marker on connect — check that the overlay is alive |
-| `/screamer?opacity=0.6` | tune the coverage live |
 
 ## Development
 

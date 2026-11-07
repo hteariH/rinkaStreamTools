@@ -1,6 +1,6 @@
 // rinkaStreamTools — точка входа.
 // Поднимает локальный сервер: панель управления на "/" и оверлеи для OBS
-// на /raffle, /goal, /top, /recent, /alerts и /screamer.
+// на /raffle, /goal, /top, /recent, /track, /poll, /counter и /alerts.
 
 import { existsSync } from "node:fs";
 import { loadConfig, saveConfig } from "./src/config.js";
@@ -74,7 +74,6 @@ async function main() {
     ["опрос в чате", "poll"],
     ["счётчик", "counter"],
     ["алерты донатов", "alerts"],
-    ["скримеры", "screamer"],
   ];
   const width = Math.max(...overlays.map(([name]) => t(name).length));
 

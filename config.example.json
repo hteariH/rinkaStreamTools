@@ -52,6 +52,7 @@
   "alerts": {
     "enabled": true,
     "volume": 0.8,
+    "baseCurrency": "USD",
     "tiers": [
       {
         "id": "small",
@@ -61,7 +62,6 @@
         "sounds": [],
         "name": "Мелкий",
         "durationMs": 5000,
-        "screamer": false,
         "sources": {
           "donationAlerts": true,
           "donatello": true
@@ -85,7 +85,6 @@
         "sounds": [],
         "name": "Средний",
         "durationMs": 7000,
-        "screamer": true,
         "sources": {
           "donationAlerts": true,
           "donatello": true
@@ -109,7 +108,6 @@
         "sounds": [],
         "name": "Крупный",
         "durationMs": 9000,
-        "screamer": true,
         "sources": {
           "donationAlerts": true,
           "donatello": true
@@ -153,11 +151,5 @@
       "voiceId": "",
       "modelId": "eleven_flash_v2_5"
     }
-  },
-  "screamer": {
-    "enabled": false,
-    "opacity": 0.75,
-    "durationMs": 5000,
-    "baseCurrency": "USD"
   }
 }

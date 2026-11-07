@@ -385,6 +385,14 @@
             <code>default</code> — для валют, которых нет в списке.
           </p>
           <label class="field">
+            <span>Базовая валюта</span>
+            <input type="text" id="a-base" placeholder="USD" />
+          </label>
+          <p class="note">
+            Базовая валюта нужна для донатов в валюте, порога для которой в тирах нет:
+            DonationAlerts присылает пересчитанную сумму, с ней и сверяемся.
+          </p>
+          <label class="field">
             <span>Громкость звуков: <b id="a-volume-view">0.8</b></span>
             <input type="range" id="a-volume" min="0" max="1" step="0.05" />
           </label>
@@ -478,43 +486,10 @@
         </div>
 
         <div class="card">
-          <h2>Скримеры</h2>
-          <label class="switch">
-            <input type="checkbox" id="s-enabled" />
-            <span>Включить скримеры</span>
-          </label>
-          <p class="note">
-            Какие тиры вызывают скример — отмечается у самих тиров слева.
-            Здесь только то, как он выглядит.
-          </p>
-          <div class="field-row">
-            <label class="field">
-              <span>Длительность, сек</span>
-              <input type="number" id="s-duration" step="0.5" min="1" />
-            </label>
-            <label class="field">
-              <span>Базовая валюта</span>
-              <input type="text" id="s-base" placeholder="USD" />
-            </label>
-          </div>
-          <label class="field">
-            <span>Перекрытие игры: <b id="s-opacity-view">0.75</b></span>
-            <input type="range" id="s-opacity" min="0.1" max="1" step="0.05" />
-          </label>
-          <p class="note">
-            Базовая валюта нужна для донатов в валюте, порога для которой в тирах нет:
-            DonationAlerts присылает пересчитанную сумму, с ней и сверяемся.
-          </p>
-        </div>
-
-        <div class="card">
           <h2>Проверка</h2>
           <p class="note">
-            С вариацией «по тиру» донат идёт по всей цепочке: алерт и скример увидишь
-            так же, как на эфире. Выбранная вручную вариация показывается сама по себе,
-            мимо тиров и порогов — в том числе <b>сердечко</b>, которым проверяют, что
-            оверлей жив и стоит где надо, не вздрагивая при этом.
-            Общая сумма от теста не растёт.
+            Тестовый донат идёт по всей цепочке: тир, алерт и озвучку увидишь так же,
+            как на эфире. Общая сумма от теста не растёт.
           </p>
           <div class="field-row">
             <label class="field">
@@ -533,20 +508,6 @@
           <label class="field">
             <span>Сообщение</span>
             <input type="text" id="t-message" placeholder="проверка связи" />
-          </label>
-          <label class="field">
-            <span>Вариация скримера</span>
-            <select id="t-variant">
-              <option value="">по тиру — как на эфире</option>
-              <option value="heart">сердечко — проверка, которая не пугает</option>
-              <option value="lunge">lunge — бросок на камеру</option>
-              <option value="flash">flash — подсечка</option>
-              <option value="strobe">strobe — строб</option>
-              <option value="flashlight">flashlight — фонарь</option>
-              <option value="blood">blood — кровь на объективе</option>
-              <option value="vhs">vhs — помехи</option>
-              <option value="creep">creep — подкрадывается</option>
-            </select>
           </label>
           <div class="actions">
             <button class="btn btn--primary" id="t-send">Прогнать донат</button>
@@ -849,8 +810,8 @@
         <h2>Browser Source в OBS</h2>
         <p class="note">
           Добавь в OBS источник <b>Browser</b> и вставь адрес. Фон у всех оверлеев
-          прозрачный. Скример и алерты лучше растянуть на весь холст, розыгрыш и
-          цель — поставить в угол.
+          прозрачный. Алерты лучше растянуть на весь холст, розыгрыш и цель —
+          поставить в угол.
         </p>
         <ul class="urls" id="obs-urls"></ul>
 
@@ -868,16 +829,6 @@
           Чтобы носить программу с собой (например на флешке), положи рядом с
           <code>rinkaStreamTools.exe</code> пустую папку <code>data</code> — тогда всё
           будет храниться в ней, а не в профиле.
-        </p>
-
-        <h2 class="mt">Скримеры на своём экране</h2>
-        <p class="note">
-          Browser Source в OBS видят только зрители — сам стример остаётся
-          единственным, кто скример не увидит. Поэтому в приложении есть второе,
-          прозрачное окно поверх игры: клики проходят насквозь, включается и
-          выключается галочкой в трее. Игра при этом должна идти в оконном или
-          безрамочном режиме: эксклюзивный полноэкранный перекрывает вообще всё,
-          это ограничение Windows.
         </p>
       </div>
     </section>

@@ -102,11 +102,6 @@ function bind(id, path, { type = "text", immediate = false } = {}) {
     cursor[parts[parts.length - 1]] = value;
     patchConfig(patch, immediate || type === "checkbox" || node.tagName === "SELECT");
   });
-
-  // range обновляет подпись сразу, не дожидаясь ответа сервера
-  if (id === "s-opacity") {
-    node.addEventListener("input", () => { el("s-opacity-view").textContent = node.value; });
-  }
 }
 
 bind("r-command", "raffle.command");
@@ -179,22 +174,15 @@ bind("tts-model", "tts.elevenlabs.modelId");
 
 el("tts-rate").addEventListener("input", (e) => { el("tts-rate-view").textContent = e.target.value; });
 
-bind("s-enabled", "screamer.enabled", { type: "checkbox" });
-bind("s-base", "screamer.baseCurrency");
+bind("a-base", "alerts.baseCurrency");
 
 // Секунды в панели удобнее, а конфиг и оверлеи считают в миллисекундах.
 el("g-poll").addEventListener("input", (e) => {
   patchConfig({ goal: { pollIntervalMs: Math.max(10, Number(e.target.value) || 60) * 1000 } });
 });
-el("s-duration").addEventListener("input", (e) => {
-  patchConfig({ screamer: { durationMs: Math.max(1, Number(e.target.value) || 5) * 1000 } });
-});
 el("a-volume").addEventListener("input", (e) => { el("a-volume-view").textContent = e.target.value; });
 el("a-volume").addEventListener("change", (e) => {
   patchConfig({ alerts: { volume: Number(e.target.value) } }, true);
-});
-el("s-opacity").addEventListener("change", (e) => {
-  patchConfig({ screamer: { opacity: Number(e.target.value) } }, true);
 });
 
 /* -------------------------------------------------------------- розыгрыш */
@@ -472,8 +460,6 @@ el("tts-refresh").addEventListener("click", () => {
   toast(t("Спрашиваю ElevenLabs…"));
 });
 
-/* ------------------------------------------------------------- скримеры */
-
 /* ------------------------------------------------------- файлы для алертов */
 
 /*
@@ -596,9 +582,7 @@ el("a-tiers").addEventListener("change", (event) => {
   if (input.type !== "checkbox") return;
 
   const field = input.dataset.field || "";
-  if (field === "screamer") {
-    patchTiers((tiers) => { tiers[index].screamer = input.checked; });
-  } else if (field === "speak") {
+  if (field === "speak") {
     patchTiers((tiers) => { tiers[index].speak = input.checked; });
   } else if (field.startsWith("src:")) {
     const source = field.slice(4);
@@ -648,7 +632,6 @@ el("t-send").addEventListener("click", () => {
     currency: el("t-currency").value.trim() || state?.config.goal.currency,
     name: el("t-name").value.trim(),
     message: el("t-message").value.trim(),
-    variant: el("t-variant").value,
   });
   toast(t("Тестовый донат отправлен"));
 });
@@ -751,12 +734,7 @@ function renderConfig(config, media) {
   setValue(el("dt-rate"), config.donatello.rate);
 
   setChecked(el("a-enabled"), config.alerts.enabled);
-
-  setChecked(el("s-enabled"), config.screamer.enabled);
-  setValue(el("s-duration"), config.screamer.durationMs / 1000);
-  setValue(el("s-base"), config.screamer.baseCurrency);
-  setValue(el("s-opacity"), config.screamer.opacity);
-  el("s-opacity-view").textContent = config.screamer.opacity;
+  setValue(el("a-base"), config.alerts.baseCurrency);
 
   if (!el("t-currency").value) el("t-currency").value = config.goal.currency;
 
@@ -806,7 +784,6 @@ function renderTiers(tiers, media) {
     if (!node) return;
     setValue(node.querySelector('[data-field="name"]'), tier.name);
     setValue(node.querySelector('[data-field="duration"]'), tier.durationMs / 1000);
-    setChecked(node.querySelector('[data-field="screamer"]'), tier.screamer);
     setChecked(node.querySelector('[data-field="speak"]'), tier.speak);
     setValue(node.querySelector('[data-field="theme"]'), tier.theme || "default");
     for (const [key] of SOURCE_FIELDS) {
@@ -880,10 +857,6 @@ function tierHtml(tier, index, library) {
     </div>
     <div class="tier__toggles">
       ${toggles}
-      <label class="switch switch--sm switch--scream">
-        <input type="checkbox" data-field="screamer" />
-        <span>${t("Скример")}</span>
-      </label>
       <label class="switch switch--sm">
         <input type="checkbox" data-field="speak" />
         <span>${t("Читать сообщение")}</span>
@@ -1205,7 +1178,6 @@ function renderUrls(port) {
     ["Опрос в чате", "/poll"],
     ["Счётчик", "/counter"],
     ["Алерты донатов", "/alerts"],
-    ["Скримеры", "/screamer"],
   ];
   el("obs-urls").innerHTML = items
     .map(

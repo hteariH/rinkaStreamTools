@@ -25,7 +25,6 @@ const EN = {
   "опрос в чате": "chat poll",
   "счётчик": "counter",
   "алерты донатов": "donation alerts",
-  "скримеры": "screamers",
 
   // ---------------------------------------------------------- источники
   "подключено: {url}": "connected: {url}",
@@ -52,11 +51,8 @@ const EN = {
   // ------------------------------------------------------------ донаты
   "донат {amount} {currency} от {name}": "donation of {amount} {currency} from {name}",
   "анонима": "anonymous",
-  "тир не подошёл — ни алерта, ни скримера": "no tier matched — no alert and no screamer",
-  "алерты выключены — ни алерта, ни скримера": "alerts are off — no alert and no screamer",
-  "у тира «{tier}» скример не включён": "the {tier} tier has no screamer switched on",
-  "скримеры выключены — тир «{tier}» его бы показал":
-    "screamers are off — the {tier} tier would have shown one",
+  "тир не подошёл — алерта не будет": "no tier matched — no alert",
+  "алерты выключены — алерта не будет": "alerts are off — no alert",
   "тир «{tier}» ({amount} {currency} ≥ {threshold})": "tier {tier} ({amount} {currency} >= {threshold})",
   "таблица донатеров очищена": "the donor table is cleared",
   "лента последних донатов очищена": "the recent donations feed is cleared",
@@ -74,10 +70,6 @@ const EN = {
   "Добавлено: {name}": "Added: {name}",
   "Добавлено в ленту": "Added to the feed",
   "Неизвестная команда: {type}": "Unknown command: {type}",
-
-  // ---------------------------------------------------------- скримеры
-  "проверка: вариация «{variant}»": "test: the {variant} variation",
-  "Скримеры выключены — включи их выше": "Screamers are off — switch them on above",
 
   // ------------------------------------------------------------- опрос
   "голосование: {question}": "poll: {question}",

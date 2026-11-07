@@ -42,3 +42,20 @@ test("без темы цели всё остаётся на умолчаниях
 test("пустой файл не роняет разбор", () => {
   assert.equal(applyDefaults({}).top.theme, "default");
 });
+
+test("базовая валюта переезжает от скримеров к алертам, остатки скримеров уходят", () => {
+  const config = applyDefaults({
+    screamer: { enabled: true, opacity: 0.6, baseCurrency: "EUR" },
+    alerts: { tiers: [{ id: "big", screamer: true, minAmounts: { default: 20 } }] },
+  });
+
+  assert.equal(config.alerts.baseCurrency, "EUR", "донаты без порога сверяются с чужой валютой");
+  assert.equal(config.screamer, undefined);
+  assert.equal("screamer" in config.alerts.tiers[0], false);
+  assert.equal(DEFAULTS.alerts.baseCurrency, "USD", "перенос испортил сами умолчания");
+});
+
+test("своя базовая валюта алертов сильнее старой скримерной", () => {
+  const config = applyDefaults({ screamer: { baseCurrency: "EUR" }, alerts: { baseCurrency: "UAH" } });
+  assert.equal(config.alerts.baseCurrency, "UAH");
+});

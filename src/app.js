@@ -111,10 +111,9 @@ export class App {
         "/ws/track": () => this.trackSnapshot(),
         "/ws/poll": () => this.pollSnapshot(),
         "/ws/counter": () => this.counterSnapshot(),
-        // Алерты и скримеры — поток событий, начального состояния у них нет:
-        // оверлей, подключившийся после доната, показывать его задним числом не должен.
+        // Алерты — поток событий, начального состояния у них нет: оверлей,
+        // подключившийся после доната, показывать его задним числом не должен.
         "/ws/alerts": () => this.alertsHello(),
-        "/ws/screamer": () => ({ type: "hello", opacity: this.config.screamer.opacity, lang: this.config.language }),
         "/ws/control": () => this.controlState(),
       },
       (channel, message, ws) => {
@@ -238,17 +237,17 @@ export class App {
       this.pushRecent();
     }
 
-    // Три выключателя подряд молчали бы одинаково — «донат пришёл, и ничего».
+    // Выключатели подряд молчали бы одинаково — «донат пришёл, и ничего».
     // Разобраться, какой именно из них закрыт, по логу было невозможно, поэтому
-    // каждый отказ теперь называет себя.
+    // каждый отказ называет себя.
     if (!this.config.alerts.enabled) {
-      log.info(donation.source, t("алерты выключены — ни алерта, ни скримера"));
+      log.info(donation.source, t("алерты выключены — алерта не будет"));
       return;
     }
 
-    const match = tierFor(donation, this.config.alerts.tiers, this.config.screamer.baseCurrency);
+    const match = tierFor(donation, this.config.alerts.tiers, this.config.alerts.baseCurrency);
     if (!match) {
-      log.info(donation.source, t("тир не подошёл — ни алерта, ни скримера"));
+      log.info(donation.source, t("тир не подошёл — алерта не будет"));
       return;
     }
 
@@ -283,40 +282,6 @@ export class App {
       ...this.pickMedia(tier),
       voice,
     });
-
-    // Скример — свойство тира: на мелкие донаты он обычно не нужен, а на крупные
-    // страница сама подберёт вариацию посильнее по имени тира.
-    if (!tier.screamer) {
-      log.info(donation.source, t("у тира «{tier}» скример не включён", { tier: tier.name }));
-      return;
-    }
-    if (!this.config.screamer.enabled) {
-      log.info(donation.source, t("скримеры выключены — тир «{tier}» его бы показал", { tier: tier.name }));
-      return;
-    }
-
-    this.hub.broadcast("/ws/screamer", {
-      ...donation,
-      type: "screamer",
-      tier: tier.id,
-      durationMs: Number(this.config.screamer.durationMs) || 5000,
-    });
-  }
-
-  /**
-   * Показать конкретную вариацию скримера, не разбирая тиры. Нужно для проверки
-   * из панели: иначе «сердечко» с мелкой суммой не показало бы ничего, потому что
-   * мелкий тир скример не вызывает.
-   */
-  previewScreamer(donation, variant) {
-    this.hub.broadcast("/ws/screamer", {
-      ...donation,
-      type: "screamer",
-      tier: "check",
-      durationMs: Number(this.config.screamer.durationMs) || 5000,
-      variant,
-    });
-    log.info("screamer", t("проверка: вариация «{variant}»", { variant }));
   }
 
   /**
@@ -816,16 +781,6 @@ export class App {
           test: true,
         };
 
-        // Вариация выбрана руками — показываем её саму, мимо тиров и порогов.
-        if (message.variant) {
-          if (!this.config.screamer.enabled) {
-            reply(t("Скримеры выключены — включи их выше"), "warn");
-            return;
-          }
-          this.previewScreamer(donation, message.variant);
-          return;
-        }
-
         this.onDonation(donation);
         return;
       }
@@ -902,7 +857,6 @@ export class App {
     this.pushTrack();
     this.pushPoll();
     this.pushCounter();
-    this.hub.broadcast("/ws/screamer", { type: "hello", opacity: next.screamer.opacity });
   }
 }
 

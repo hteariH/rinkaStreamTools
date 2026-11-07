@@ -7,7 +7,7 @@ import assert from "node:assert/strict";
 import { tierFor } from "../src/donations/rules.js";
 import { DEFAULTS } from "../src/config.js";
 
-const BASE = DEFAULTS.screamer.baseCurrency;
+const BASE = DEFAULTS.alerts.baseCurrency;
 const tiers = () => structuredClone(DEFAULTS.alerts.tiers);
 
 const donation = (fields) => ({

@@ -137,7 +137,9 @@ const EN = {
   "Алерты донатов": "Donation alerts",
   "Показывать алерты": "Show alerts",
   "Громкость звуков:": "Sound volume:",
-  "Скример": "Screamer",
+  "Базовая валюта": "Base currency",
+  "Базовая валюта нужна для донатов в валюте, порога для которой в тирах нет: DonationAlerts присылает пересчитанную сумму, с ней и сверяемся.":
+    "The base currency is for donations in a currency with no threshold in the tiers: DonationAlerts sends a converted amount, and that is what gets compared.",
   "Читать сообщение": "Read the message",
   "Тема": "Theme",
   "сек": "sec",
@@ -178,40 +180,16 @@ const EN = {
   "Ссылки из сообщения выкидываются, длина режется: у облака это прямые деньги, у офлайнового голоса — минута чтения вслух.":
     "Links are stripped from the message and the length is capped: with the cloud engine that is real money, with the offline voice it is a minute of reading aloud.",
 
-  // --------------------------------------------------------- скримеры
-  "Скримеры": "Screamers",
-  "Включить скримеры": "Enable screamers",
-  "Длительность, сек": "Duration, sec",
-  "Базовая валюта": "Base currency",
-  "Перекрытие игры:": "Game coverage:",
-  "Какие тиры вызывают скример — отмечается у самих тиров слева. Здесь только то, как он выглядит.":
-    "Which tiers trigger a screamer is set on the tiers on the left. This is only about how it looks.",
-  "Базовая валюта нужна для донатов в валюте, порога для которой в тирах нет: DonationAlerts присылает пересчитанную сумму, с ней и сверяемся.":
-    "The base currency is for donations in a currency with no threshold in the tiers: DonationAlerts sends a converted amount, and that is what gets compared.",
-
   // --------------------------------------------------------- проверка
   "Проверка": "Test",
   "Сумма": "Amount",
   "Имя": "Name",
   "Сообщение": "Message",
-  "Вариация скримера": "Screamer variation",
-  "по тиру — как на эфире": "by tier — exactly as on air",
-  "сердечко — проверка, которая не пугает": "heart — a check that does not scare anyone",
-  "lunge — бросок на камеру": "lunge — lunge at the camera",
-  "flash — подсечка": "flash — quick cut",
-  "strobe — строб": "strobe — strobe",
-  "flashlight — фонарь": "flashlight — flashlight",
-  "blood — кровь на объективе": "blood — blood on the lens",
-  "vhs — помехи": "vhs — tape noise",
-  "creep — подкрадывается": "creep — creeping closer",
   "Прогнать донат": "Run a test donation",
   "Тестовый зритель": "Test viewer",
   "проверка связи": "checking the setup",
-  "сердечко": "heart",
-  "С вариацией «по тиру» донат идёт по всей цепочке: алерт и скример увидишь так же, как на эфире. Выбранная вручную вариация показывается сама по себе, мимо тиров и порогов — в том числе":
-    "With the tier variation the donation goes through the whole chain: you see the alert and the screamer exactly as on air. A hand-picked variation is shown on its own, past tiers and thresholds — including the",
-  ", которым проверяют, что оверлей жив и стоит где надо, не вздрагивая при этом. Общая сумма от теста не растёт.":
-    ", which tells you the overlay is alive and in the right place without making you flinch. A test does not change the total.",
+  "Тестовый донат идёт по всей цепочке: тир, алерт и озвучку увидишь так же, как на эфире. Общая сумма от теста не растёт.":
+    "A test donation goes through the whole chain: you see the tier, the alert and the voice exactly as on air. A test does not change the total.",
 
   // ------------------------------------------------------------ опрос
   "Опрос в чате": "Chat poll",
@@ -313,8 +291,8 @@ const EN = {
   // ------------------------------------------------------------- OBS
   "Browser Source в OBS": "Browser Source in OBS",
   "Добавь в OBS источник": "Add a",
-  "и вставь адрес. Фон у всех оверлеев прозрачный. Скример и алерты лучше растянуть на весь холст, розыгрыш и цель — поставить в угол.":
-    "source in OBS and paste the address. Every overlay has a transparent background. Screamers and alerts are best stretched over the whole canvas; the raffle and the goal go in a corner.",
+  "и вставь адрес. Фон у всех оверлеев прозрачный. Алерты лучше растянуть на весь холст, розыгрыш и цель — поставить в угол.":
+    "source in OBS and paste the address. Every overlay has a transparent background. Alerts are best stretched over the whole canvas; the raffle and the goal go in a corner.",
   "Копировать": "Copy",
   "Открыть": "Open",
   "Цель сбора": "Donation goal",
@@ -327,9 +305,6 @@ const EN = {
   "Чтобы носить программу с собой (например на флешке), положи рядом с": "To carry the program around (on a flash drive, say), put an empty",
   "пустую папку": "folder next to",
   "— тогда всё будет храниться в ней, а не в профиле.": "— everything will then be stored there instead of the profile.",
-  "Скримеры на своём экране": "Screamers on your own screen",
-  "Browser Source в OBS видят только зрители — сам стример остаётся единственным, кто скример не увидит. Поэтому в приложении есть второе, прозрачное окно поверх игры: клики проходят насквозь, включается и выключается галочкой в трее. Игра при этом должна идти в оконном или безрамочном режиме: эксклюзивный полноэкранный перекрывает вообще всё, это ограничение Windows.":
-    "A Browser Source in OBS is seen by viewers only — the streamer ends up being the one person who never sees the screamer. So the app has a second, transparent window over the game: clicks pass through it, and it is toggled from the tray. The game has to run windowed or borderless: exclusive fullscreen covers everything, and that is a Windows limitation.",
 
   // ----------------------------------------------- строки из скриптов
   "Пока пусто": "Nothing yet",

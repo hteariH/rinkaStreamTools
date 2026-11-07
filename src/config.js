@@ -88,6 +88,9 @@ export const DEFAULTS = {
     enabled: true,
     // Громкость звуков алертов: 0 — тихо, 1 — как записано в файле.
     volume: 0.8,
+    // Валюта, в которую DonationAlerts пересчитывает донат сам. Нужна только для
+    // валют, порогов для которых в тирах нет.
+    baseCurrency: "USD",
     // Тиры: во что попадает донат по сумме. Каждый включается отдельно для каждой
     // площадки — например мелкие донаты с Donatello показывать, а с DonationAlerts
     // нет, если там свои алерты уже настроены.
@@ -107,8 +110,6 @@ export const DEFAULTS = {
         // приелось. Пусто — алерт без картинки и со звуком по умолчанию.
         images: [],
         sounds: [],
-        // Вылетает ли на этот тир скример.
-        screamer: false,
         sources: { donationAlerts: true, donatello: true },
         minAmounts: { USD: 1, USDT: 1, EUR: 1, UAH: 40, RUB: 100, KZT: 500, BYN: 3, default: 1 },
       },
@@ -120,7 +121,6 @@ export const DEFAULTS = {
         theme: "default",
         images: [],
         sounds: [],
-        screamer: true,
         sources: { donationAlerts: true, donatello: true },
         minAmounts: { USD: 5, USDT: 5, EUR: 5, UAH: 200, RUB: 450, KZT: 2500, BYN: 15, default: 5 },
       },
@@ -132,7 +132,6 @@ export const DEFAULTS = {
         theme: "default",
         images: [],
         sounds: [],
-        screamer: true,
         sources: { donationAlerts: true, donatello: true },
         minAmounts: { USD: 20, USDT: 20, EUR: 20, UAH: 800, RUB: 1800, KZT: 10000, BYN: 60, default: 20 },
       },
@@ -205,17 +204,6 @@ export const DEFAULTS = {
     pollIntervalMs: 1500,
     theme: "default",
   },
-  screamer: {
-    // Выключены на новом конфиге: скример — вещь, которую включают осознанно, а не
-    // обнаруживают в эфире. У тех, кто их уже включил, настройка своя и остаётся.
-    enabled: false,
-    // Насколько скример перекрывает игру.
-    opacity: 0.75,
-    durationMs: 5000,
-    // Валюта, в которую DonationAlerts пересчитывает донат сам. Нужна только для
-    // валют, порогов для которых в тирах нет.
-    baseCurrency: "USD",
-  },
 };
 
 // Мерж по вложенным объектам. Массивы (тиры алертов) заменяются целиком: иначе
@@ -276,9 +264,26 @@ function moveTtsToEngine(raw, config) {
   return config;
 }
 
+/**
+ * Скримеров больше нет, а базовая валюта жила у них, хотя нужна она тирам
+ * алертов. Переносим её в alerts — иначе у того, кто сменил её на EUR, донаты
+ * в незнакомой валюте молча начали бы сверяться с порогом в долларах. Остатки
+ * скримеров из старого файла выкидываем, чтобы при сохранении они не воскресали.
+ */
+function dropScreamers(raw, config) {
+  const base = raw?.screamer?.baseCurrency;
+  delete config.screamer;
+  config.alerts = {
+    ...config.alerts,
+    baseCurrency: raw?.alerts?.baseCurrency || base || config.alerts.baseCurrency,
+    tiers: config.alerts.tiers.map(({ screamer, ...tier }) => tier),
+  };
+  return config;
+}
+
 /** Конфиг из разобранного файла: умолчания плюс переносы со старых версий. */
 export function applyDefaults(raw) {
-  return moveTtsToEngine(raw, inheritGoalTheme(raw, merge(DEFAULTS, raw)));
+  return dropScreamers(raw, moveTtsToEngine(raw, inheritGoalTheme(raw, merge(DEFAULTS, raw))));
 }
 
 export async function loadConfig() {
