@@ -89,6 +89,12 @@ up with clean settings while the past donations stay in the old folder. On the f
 of a new version, data sitting next to the executable moves into the profile by itself —
 copied, not moved, so rolling back to an older version still works.
 
+**You don't have to watch for new versions.** Every six hours the program asks GitHub for
+the latest version number, and if a new one is out, a note with a "Download" button appears
+at the top of the panel. It only tells you: nothing is downloaded or installed by itself,
+and viewers never see the note. To turn this off, uncheck "Check for updates" on the OBS
+sources tab.
+
 The path is shown in the panel, on the OBS sources tab, next to an "Open the folder"
 button.
 

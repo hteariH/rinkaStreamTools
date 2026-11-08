@@ -298,6 +298,11 @@ const EN = {
   "Цель сбора": "Donation goal",
   "Данные и обновление": "Data and updates",
   "Открыть папку": "Open the folder",
+  "Скачать": "Download",
+  "Проверять обновления": "Check for updates",
+  "Раз в шесть часов программа спрашивает у GitHub номер последней версии. Если вышла новая, в шапке панели появится заметка со ссылкой. Сама программа ничего не скачивает, а зрители заметку не видят.":
+    "Every six hours the program asks GitHub for the latest version number. If a new one is out, a note with a link appears at the top of the panel. The program downloads nothing by itself, and viewers never see the note.",
+  "Доступна версия {version}": "Version {version} is available",
   "Настройки, таблица донатеров, лента и гифки лежат": "Settings, the donor table, the feed and the GIFs live",
   "не в папке программы": "outside the program folder",
   ", а в профиле пользователя. Поэтому обновление ничего не теряет: распаковал новый архив куда угодно, запустил — всё на месте.":

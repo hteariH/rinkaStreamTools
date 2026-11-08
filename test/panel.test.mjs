@@ -113,8 +113,14 @@ function state(patch = {}) {
     tts: { engine: "windows", voices: [], quota: null, hasKey: false },
     nowplaying: { track: null, apps: [] },
     dataDir: "C:/данные",
+    update: { current: "1.9.0", latest: null },
     log: [],
   };
+}
+
+/** То же состояние, но с другим ответом о версиях. */
+function withUpdate(update) {
+  return { ...state(), update };
 }
 
 test("выбор языка в списке уходит на сервер", () => {
@@ -148,4 +154,54 @@ test("состояние от сервера отрисовывается цел
   // состояния разъедется с сервером, это упадёт здесь, а не в эфире.
   sandbox.render(state());
   assert.equal(el("data-dir").textContent, "C:/данные");
+});
+
+test("новой версии нет — заметка скрыта, а номер текущей виден", () => {
+  const { sandbox, el } = loadPanel();
+
+  sandbox.render(withUpdate({ current: "1.9.0", latest: null }));
+
+  assert.equal(el("app-version").textContent, "v1.9.0");
+  assert.equal(el("update").hidden, true);
+});
+
+test("вышла новая версия — заметка показана и говорит, какая", () => {
+  const { sandbox, el } = loadPanel();
+
+  sandbox.render(withUpdate({ current: "1.9.0", latest: "1.10.0" }));
+
+  assert.equal(el("update").hidden, false);
+  assert.equal(el("update-text").textContent, "Доступна версия 1.10.0");
+});
+
+test("сборка без версии показывает dev без буквы v", () => {
+  const { sandbox, el } = loadPanel();
+
+  sandbox.render(withUpdate({ current: "dev", latest: null }));
+
+  assert.equal(el("app-version").textContent, "dev");
+});
+
+test("кнопка «Скачать» просит сервер открыть страницу и адреса сама не передаёт", () => {
+  const { el, sent } = loadPanel();
+
+  el("update-open").fire("click");
+
+  assert.deepEqual(sent.at(-1), { type: "update.open" });
+});
+
+test("галочка проверки обновлений показывает настройку и уходит на сервер", () => {
+  const { sandbox, el, sent } = loadPanel();
+
+  const off = state();
+  off.config.updates.check = false;
+  sandbox.render(off);
+  assert.equal(el("updates-check").checked, false);
+
+  el("updates-check").checked = true;
+  el("updates-check").fire("change");
+
+  const save = sent.find((message) => message.type === "config.save");
+  assert.ok(save, "панель ничего не отправила — галочка ни к чему не привязана");
+  assert.deepEqual(save.patch, { updates: { check: true } });
 });

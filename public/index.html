@@ -10,7 +10,12 @@
   <header class="top">
     <div class="brand">
       <span class="brand__name">rinkaStreamTools</span>
+      <span class="brand__version" id="app-version" translate="no"></span>
       <span class="brand__hint">панель управления</span>
+    </div>
+    <div class="update" id="update" hidden>
+      <span id="update-text"></span>
+      <button class="btn btn--ghost" id="update-open">Скачать</button>
     </div>
     <div class="statuses" id="statuses"></div>
     <label class="lang">
@@ -829,6 +834,15 @@
           Чтобы носить программу с собой (например на флешке), положи рядом с
           <code>rinkaStreamTools.exe</code> пустую папку <code>data</code> — тогда всё
           будет храниться в ней, а не в профиле.
+        </p>
+        <label class="switch">
+          <input type="checkbox" id="updates-check" />
+          <span>Проверять обновления</span>
+        </label>
+        <p class="note">
+          Раз в шесть часов программа спрашивает у GitHub номер последней версии. Если
+          вышла новая, в шапке панели появится заметка со ссылкой. Сама программа ничего
+          не скачивает, а зрители заметку не видят.
         </p>
       </div>
     </section>
