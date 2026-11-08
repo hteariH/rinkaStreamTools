@@ -129,6 +129,15 @@ const EN = {
   "api цели ответило {status}": "the goal API replied {status}",
   "subscribe вернул {body}": "subscribe returned {body}",
   "токен centrifugo не похож на JWT": "the centrifugo token does not look like a JWT",
+  "«{address}» не похоже на адрес TRON — проверь, нет ли опечатки": "{address} does not look like a TRON address — check it for typos",
+  "TronGrid не ответил: {error}": "TronGrid did not respond: {error}",
+  "ответ {status}": "status {status}",
+  "в ответе нет списка переводов": "the response has no list of transfers",
+  "не удалось сохранить сумму USDT: {error}": "could not save the USDT total: {error}",
+  "перевод старый — алерта не будет": "the transfer is old — no alert",
+  "USDT выключен: обнулять нечего": "USDT is off: nothing to reset",
+  "сумма USDT обнулена": "the USDT total was reset",
+  "Сумма USDT обнулена": "USDT total reset",
 
   // ------------------------------------------------------------- медиа
   "не тот тип файла": "wrong file type",

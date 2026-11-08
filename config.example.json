@@ -19,6 +19,13 @@
     "widgetUrl": "",
     "rate": 1
   },
+  "tron": {
+    "enabled": false,
+    "address": "",
+    "rate": 1,
+    "minAmount": 0.1,
+    "apiKey": ""
+  },
   "goal": {
     "target": 700,
     "currency": "USD",
@@ -67,7 +74,8 @@
         "durationMs": 5000,
         "sources": {
           "donationAlerts": true,
-          "donatello": true
+          "donatello": true,
+          "tron": true
         },
         "minAmounts": {
           "USD": 1,
@@ -90,7 +98,8 @@
         "durationMs": 7000,
         "sources": {
           "donationAlerts": true,
-          "donatello": true
+          "donatello": true,
+          "tron": true
         },
         "minAmounts": {
           "USD": 5,
@@ -113,7 +122,8 @@
         "durationMs": 9000,
         "sources": {
           "donationAlerts": true,
-          "donatello": true
+          "donatello": true,
+          "tron": true
         },
         "minAmounts": {
           "USD": 20,

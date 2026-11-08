@@ -8,7 +8,7 @@ import path from "node:path";
 import process from "node:process";
 
 import { Hub } from "./server.js";
-import { PUBLIC_DIR, DONORS_PATH, RECENT_PATH, MEDIA_DIR, DATA_DIR } from "./paths.js";
+import { PUBLIC_DIR, DONORS_PATH, RECENT_PATH, TRON_PATH, MEDIA_DIR, DATA_DIR } from "./paths.js";
 import { log } from "./log.js";
 import { saveConfig } from "./config.js";
 import { Raffle } from "./raffle/raffle.js";
@@ -18,6 +18,7 @@ import { Hotkeys } from "./counter/hotkeys.js";
 import { AxelChatClient } from "./raffle/axelchat.js";
 import { DonationAlertsSource } from "./donations/donationalerts.js";
 import { DonatelloSource } from "./donations/donatello.js";
+import { TronSource } from "./donations/tron.js";
 import { Goal } from "./donations/goal.js";
 import { Donors } from "./donations/donors.js";
 import { Recent } from "./donations/recent.js";
@@ -69,12 +70,14 @@ export class App {
 
     this.donationAlerts = new DonationAlertsSource(config.donationAlerts);
     this.donatello = new DonatelloSource(config.donatello);
+    this.tron = new TronSource(config.tron, { statePath: TRON_PATH });
 
     this.goal = new Goal(
       config.goal,
       [
         { key: "donationAlerts", source: this.donationAlerts, config: config.donationAlerts },
         { key: "donatello", source: this.donatello, config: config.donatello },
+        { key: "tron", source: this.tron, config: config.tron },
       ],
       (key, error) => log.warn(key, t("сумма не обновилась: {error}", { error: error.message }))
     );
@@ -137,12 +140,14 @@ export class App {
   async start() {
     await this.donors.load();
     await this.recent.load();
+    await this.tron.load();
     await this.refreshMedia();
     await this.hub.start();
 
     this._wireAxelChat();
     this._wireSource("donationAlerts", this.donationAlerts);
     this._wireSource("donatello", this.donatello);
+    this._wireSource("tron", this.tron);
 
     this._wireNowPlaying();
     this._wireHotkeys();
@@ -152,6 +157,7 @@ export class App {
     this.hotkeys.start();
     this.donationAlerts.start();
     this.donatello.start();
+    this.tron.start();
     this.goal.start();
     this.nowPlaying.start();
     this.updates.start();
@@ -247,6 +253,13 @@ export class App {
       this.recent.add(donation);
       this.pushTop();
       this.pushRecent();
+    }
+
+    // Перевод, пришедший пока программа не следила за адресом: в сумме и таблицах он
+    // есть, а алерт про вчерашний донат зрителям ни к чему.
+    if (donation.quiet) {
+      log.info(donation.source, t("перевод старый — алерта не будет"));
+      return;
     }
 
     // Выключатели подряд молчали бы одинаково — «донат пришёл, и ничего».
@@ -564,6 +577,7 @@ export class App {
         axelchat: this.axelchatStatus,
         donationAlerts: this.donationAlerts.enabled ? this.donationAlerts.status : "off",
         donatello: this.donatello.enabled ? this.donatello.status : "off",
+        tron: this.tron.enabled ? this.tron.status : "off",
         nowplaying: this.nowPlaying.status,
         // Слушается ли клавиатура. В панели это не лампочка наверху, а подпись в
         // карточке счётчика: хоткеев может не быть вовсе, и это нормально.
@@ -786,6 +800,17 @@ export class App {
           reply(t("Суммы обновлены"));
         });
         return;
+      case "tron.reset":
+        if (!this.tron.enabled) {
+          reply(t("USDT выключен: обнулять нечего"), "warn");
+          return;
+        }
+        this.tron.reset().then(() => {
+          log.info("tron", t("сумма USDT обнулена"));
+          this.pushGoal();
+          reply(t("Сумма USDT обнулена"), "ok");
+        });
+        return;
       case "config.save":
         this.applyConfig(message.patch).then(
           () => reply(t("Настройки сохранены"), "ok"),
@@ -861,9 +886,11 @@ export class App {
 
     this.donationAlerts.configure(next.donationAlerts);
     this.donatello.configure(next.donatello);
+    this.tron.configure(next.tron);
     this.goal.configure(next.goal, {
       donationAlerts: next.donationAlerts,
       donatello: next.donatello,
+      tron: next.tron,
     });
     this.nowPlaying.configure(next.nowplaying);
     this.poll.configure(next.poll);

@@ -73,6 +73,9 @@ export const CONFIG_PATH = path.join(DATA_DIR, "config.json");
 // иначе было бы нельзя.
 export const DONORS_PATH = path.join(DATA_DIR, "donors.json");
 export const RECENT_PATH = path.join(DATA_DIR, "recent.json");
+// Сумма USDT и учтённые переводы: у блокчейна нет чужого счётчика, который можно
+// спросить заново, так что это единственное место, где сумма живёт.
+export const TRON_PATH = path.join(DATA_DIR, "tron.json");
 // Гифки и звуки алертов, которые стример добавил сам.
 export const MEDIA_DIR = path.join(DATA_DIR, "media");
 export const NOWPLAYING_SCRIPT = path.join(BASE_DIR, "src", "nowplaying", "session.ps1");

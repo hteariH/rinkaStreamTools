@@ -72,6 +72,13 @@ const EN = {
   "Ссылка на виджет цели": "Goal widget link",
   "Множитель к валюте цели": "Rate to the goal currency",
   "Ссылка на виджет": "Widget link",
+  "Адрес кошелька TRON": "TRON wallet address",
+  "Минимальная сумма, USDT": "Minimum amount, USDT",
+  "Ключ TronGrid (необязательно)": "TronGrid key (optional)",
+  "Обнулить сумму USDT": "Reset USDT total",
+  "Обнулить сумму USDT? Считать начнём заново с этого момента.": "Reset the USDT total? Counting starts again from now.",
+  "Нужен только публичный адрес: приватный ключ и сид-фраза не нужны, никогда их сюда не вводи. Считаются переводы с момента добавления адреса, адрес проверяется раз в минуту, и алерт приходит примерно через две минуты после отправки. Вместо имени показывается короткий адрес, сообщения в переводе нет. Перевод, пришедший пока программа была закрыта, попадёт в сумму без алерта. Свои переводы на этот адрес тоже посчитаются как донаты, поэтому лучше завести для донатов отдельный адрес.":
+    "Only the public address is needed: no private key or seed phrase — never enter those here. Transfers count from the moment the address is added, the address is checked once a minute, and the alert arrives about two minutes after sending. A short address is shown instead of a name, and transfers carry no message. A transfer that arrives while the program is closed goes into the total without an alert. Your own transfers to this address also count as donations, so it is better to use a separate address for donations.",
   "Обе площадки читаются через страницу виджета — ту же ссылку, что вставляется в OBS. Логин и пароль не нужны и нигде не хранятся.":
     "Both platforms are read through their widget page — the same link you paste into OBS. No login or password is needed, and none is stored anywhere.",
 

@@ -141,6 +141,11 @@ bind("da-rate", "donationAlerts.rate", { type: "number" });
 bind("dt-enabled", "donatello.enabled", { type: "checkbox" });
 bind("dt-url", "donatello.widgetUrl");
 bind("dt-rate", "donatello.rate", { type: "number" });
+bind("tr-enabled", "tron.enabled", { type: "checkbox" });
+bind("tr-address", "tron.address");
+bind("tr-rate", "tron.rate", { type: "number" });
+bind("tr-min", "tron.minAmount", { type: "number" });
+bind("tr-key", "tron.apiKey");
 
 bind("lang", "language");
 bind("p-command", "poll.command");
@@ -261,6 +266,12 @@ function fmtTime(seconds) {
 /* ------------------------------------------------------------------ цель */
 
 el("g-refresh").addEventListener("click", () => send({ type: "goal.refresh" }));
+
+el("tr-reset").addEventListener("click", () => {
+  if (confirm(t("Обнулить сумму USDT? Считать начнём заново с этого момента."))) {
+    send({ type: "tron.reset" });
+  }
+});
 
 el("top-reset").addEventListener("click", () => {
   if (confirm(t("Очистить таблицу донатеров? Суммы за эфир пропадут."))) {
@@ -643,6 +654,7 @@ const STATUS_LABELS = {
   axelchat: "AxelChat",
   donationAlerts: "DonationAlerts",
   donatello: "Donatello",
+  tron: "USDT",
   nowplaying: "Трек", // переводится через t() при отрисовке
 };
 
@@ -733,6 +745,11 @@ function renderConfig(config, media) {
   setChecked(el("dt-enabled"), config.donatello.enabled);
   setValue(el("dt-url"), config.donatello.widgetUrl);
   setValue(el("dt-rate"), config.donatello.rate);
+  setChecked(el("tr-enabled"), config.tron.enabled);
+  setValue(el("tr-address"), config.tron.address);
+  setValue(el("tr-rate"), config.tron.rate);
+  setValue(el("tr-min"), config.tron.minAmount);
+  setValue(el("tr-key"), config.tron.apiKey);
 
   setChecked(el("a-enabled"), config.alerts.enabled);
   setValue(el("a-base"), config.alerts.baseCurrency);
@@ -748,6 +765,7 @@ function renderConfig(config, media) {
 const SOURCE_FIELDS = [
   ["donationAlerts", "DonationAlerts"],
   ["donatello", "Donatello"],
+  ["tron", "USDT"],
 ];
 
 const MEDIA_KINDS = [
