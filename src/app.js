@@ -26,6 +26,8 @@ import { Tts } from "./tts/service.js";
 import { NowPlaying } from "./nowplaying/nowplaying.js";
 import { tierFor } from "./donations/rules.js";
 import { t, setLang } from "./i18n.js";
+import { UpdateChecker, RELEASES_URL } from "./update.js";
+import { VERSION } from "./version.js";
 
 // Как часто панель получает полное состояние. Реже — заметно на глаз, чаще —
 // пустая трата: за 250 мс человек не успевает ничего заметить, а пачка
@@ -101,6 +103,9 @@ export class App {
     // канал у оверлея свой.
     this.nowPlaying = new NowPlaying(config.nowplaying);
 
+    // Новая версия — дело стримера, а не зрителей: узнаёт о ней только панель.
+    this.updates = new UpdateChecker({ current: VERSION, check: config.updates.check });
+
     this.hub = new Hub(
       config.port,
       {
@@ -141,6 +146,7 @@ export class App {
 
     this._wireNowPlaying();
     this._wireHotkeys();
+    this._wireUpdates();
 
     this.axelchat.start();
     this.hotkeys.start();
@@ -148,6 +154,7 @@ export class App {
     this.donatello.start();
     this.goal.start();
     this.nowPlaying.start();
+    this.updates.start();
 
     log.on("line", (entry) => this.hub.broadcast("/ws/control", { type: "log", entry }));
 
@@ -203,6 +210,11 @@ export class App {
     });
     this.hotkeys.on("log", (text) => log.info("counter", text));
     this.hotkeys.on("status", () => this.pushControl());
+  }
+
+  _wireUpdates() {
+    this.updates.on("change", () => this.pushControl());
+    this.updates.on("log", (text) => log.info("update", text));
   }
 
   _wireSource(key, source) {
@@ -541,6 +553,7 @@ export class App {
       // Где лежат настройки и данные: без этого «куда делись мои донаты после
       // обновления» не на что ответить.
       dataDir: DATA_DIR,
+      update: this.updates.snapshot(),
       // Ключ наружу не отдаём — только факт, что он задан, остаток лимита и
       // список голосов.
       tts: this.tts.state(),
@@ -723,6 +736,17 @@ export class App {
         reply(t("Папка открыта"));
         return;
       }
+      case "update.open": {
+        // Адрес зашит здесь, а не приходит из панели: в сокет может написать любая
+        // страница, а запускать по её просьбе что попало нельзя.
+        if (process.platform !== "win32") {
+          reply(RELEASES_URL, "info");
+          return;
+        }
+        spawn("explorer.exe", [RELEASES_URL], { detached: true, stdio: "ignore" }).unref();
+        reply(t("Страница релиза открыта"));
+        return;
+      }
       case "tts.refresh":
         /*
          * Голоса и остаток лимита спрашиваются независимо: у ключа с урезанными
@@ -846,6 +870,7 @@ export class App {
     this.counter.configure(next.counter);
     this.hotkeys.configure(next.counter.hotkeys);
     this.tts.configure(next.tts);
+    this.updates.configure(next.updates);
 
     if (portChanged) log.warn("server", t("порт сменится после перезапуска"));
 

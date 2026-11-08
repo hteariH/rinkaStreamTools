@@ -104,6 +104,7 @@ function bind(id, path, { type = "text", immediate = false } = {}) {
   });
 }
 
+bind("updates-check", "updates.check", { type: "checkbox" });
 bind("r-command", "raffle.command");
 bind("r-theme", "raffle.theme");
 bind("r-axelchat", "raffle.axelchatUrl");
@@ -1192,6 +1193,14 @@ function renderUrls(port) {
 }
 
 el("data-open").addEventListener("click", () => send({ type: "data.open" }));
+el("update-open").addEventListener("click", () => send({ type: "update.open" }));
+
+function renderUpdate({ current, latest }, config) {
+  el("app-version").textContent = current === "dev" ? current : `v${current}`;
+  el("update").hidden = !latest;
+  if (latest) el("update-text").textContent = t("Доступна версия {version}", { version: latest });
+  setChecked(el("updates-check"), config.updates.check);
+}
 
 el("obs-urls").addEventListener("click", (event) => {
   const button = event.target.closest(".copy");
@@ -1259,6 +1268,7 @@ function render(next) {
   renderNowPlaying(next.nowplaying, next.config);
   renderUrls(next.config.port);
   el("data-dir").textContent = next.dataDir || "";
+  renderUpdate(next.update, next.config);
   if (next.log) renderLog(next.log);
 }
 

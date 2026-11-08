@@ -31,7 +31,12 @@ body {
   background: linear-gradient(180deg, #171923, #131520);
 }
 .brand__name { font-size: 20px; font-weight: 800; letter-spacing: .01em; }
+.brand__version { margin-left: 8px; color: var(--muted); font-size: 12px; font-variant-numeric: tabular-nums; }
 .brand__hint { margin-left: 10px; color: var(--muted); font-size: 13px; }
+
+/* display: flex перебил бы атрибут hidden, поэтому он прописан отдельно. */
+.update { display: flex; align-items: center; gap: 10px; font-size: 13px; color: var(--gold); }
+.update[hidden] { display: none; }
 
 .statuses { display: flex; gap: 16px; flex-wrap: wrap; }
 .status { display: flex; align-items: center; gap: 7px; font-size: 13px; color: var(--muted); }

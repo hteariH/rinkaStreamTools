@@ -44,7 +44,13 @@ const FUSE = "NODE_SEA_FUSE_fce680ab2cc467b6e072b8b5df1996b2";
 rmSync(dist, { recursive: true, force: true });
 mkdirSync(serverDir, { recursive: true });
 
-console.log("[1/6] Сборка бандла (esbuild)...");
+// Версия программы — это тег релиза: GitHub Actions кладёт его в GITHUB_REF_NAME.
+// При ручном запуске сборки там имя ветки, и такая сборка остаётся "dev": проверять
+// обновления ей не с чем сравнивать.
+const ref = process.env.GITHUB_REF_NAME ?? "";
+const version = /^v\d+\.\d+\.\d+$/.test(ref) ? ref.slice(1) : "dev";
+
+console.log(`[1/6] Сборка бандла (esbuild), версия ${version}...`);
 await build({
   entryPoints: [path.join(root, "server.js")],
   bundle: true,
@@ -52,6 +58,7 @@ await build({
   format: "cjs",
   target: "node20",
   outfile: bundle,
+  define: { __APP_VERSION__: JSON.stringify(version) },
   // Необязательные нативные ускорители ws — оставляем внешними (ws сам ловит их отсутствие).
   external: ["bufferutil", "utf-8-validate"],
   // import.meta.url в CJS-бандле не используется (см. src/paths.js) — глушим предупреждение.
