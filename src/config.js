@@ -37,6 +37,17 @@ export const DEFAULTS = {
     widgetUrl: "",
     rate: 1,
   },
+  tron: {
+    // USDT прямым переводом на адрес стримера (сеть TRON, TRC-20). Читается только
+    // публичная история адреса: ни вход, ни приватный ключ не нужны и не хранятся.
+    enabled: false,
+    address: "",
+    rate: 1,
+    // Меньше этой суммы — не донат, а спам копейками на адрес, который у всех на виду.
+    minAmount: 0.1,
+    // Необязательный ключ TronGrid: без него работает, но лимиты строже.
+    apiKey: "",
+  },
   goal: {
     target: 700,
     currency: "USD",
@@ -115,7 +126,7 @@ export const DEFAULTS = {
         // приелось. Пусто — алерт без картинки и со звуком по умолчанию.
         images: [],
         sounds: [],
-        sources: { donationAlerts: true, donatello: true },
+        sources: { donationAlerts: true, donatello: true, tron: true },
         minAmounts: { USD: 1, USDT: 1, EUR: 1, UAH: 40, RUB: 100, KZT: 500, BYN: 3, default: 1 },
       },
       {
@@ -126,7 +137,7 @@ export const DEFAULTS = {
         theme: "default",
         images: [],
         sounds: [],
-        sources: { donationAlerts: true, donatello: true },
+        sources: { donationAlerts: true, donatello: true, tron: true },
         minAmounts: { USD: 5, USDT: 5, EUR: 5, UAH: 200, RUB: 450, KZT: 2500, BYN: 15, default: 5 },
       },
       {
@@ -137,7 +148,7 @@ export const DEFAULTS = {
         theme: "default",
         images: [],
         sounds: [],
-        sources: { donationAlerts: true, donatello: true },
+        sources: { donationAlerts: true, donatello: true, tron: true },
         minAmounts: { USD: 20, USDT: 20, EUR: 20, UAH: 800, RUB: 1800, KZT: 10000, BYN: 60, default: 20 },
       },
     ],

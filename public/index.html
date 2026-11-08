@@ -206,6 +206,42 @@
             Обе площадки читаются через страницу виджета — ту же ссылку, что вставляется
             в OBS. Логин и пароль не нужны и нигде не хранятся.
           </p>
+
+          <div class="source" data-source="tron">
+            <label class="switch">
+              <input type="checkbox" id="tr-enabled" />
+              <span>USDT (TRC-20)</span>
+            </label>
+            <label class="field">
+              <span>Адрес кошелька TRON</span>
+              <input type="text" id="tr-address" placeholder="T…" spellcheck="false" />
+            </label>
+            <label class="field">
+              <span>Множитель к валюте цели</span>
+              <input type="number" id="tr-rate" step="0.0001" min="0" />
+            </label>
+            <label class="field">
+              <span>Минимальная сумма, USDT</span>
+              <input type="number" id="tr-min" step="0.01" min="0" />
+            </label>
+            <label class="field">
+              <span>Ключ TronGrid (необязательно)</span>
+              <input type="password" id="tr-key" autocomplete="off" />
+            </label>
+            <div class="actions">
+              <button class="btn" id="tr-reset">Обнулить сумму USDT</button>
+            </div>
+          </div>
+
+          <p class="note">
+            Нужен только публичный адрес: приватный ключ и сид-фраза не нужны, никогда
+            их сюда не вводи. Считаются переводы с момента добавления адреса, адрес
+            проверяется раз в минуту, и алерт приходит примерно через две минуты после
+            отправки. Вместо имени показывается короткий адрес, сообщения в переводе нет.
+            Перевод, пришедший пока программа была закрыта, попадёт в сумму без алерта.
+            Свои переводы на этот адрес тоже посчитаются как донаты, поэтому лучше завести
+            для донатов отдельный адрес.
+          </p>
         </div>
 
         <div class="card">

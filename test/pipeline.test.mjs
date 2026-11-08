@@ -25,6 +25,7 @@ function makeApp(patch = {}) {
   const dir = mkdtempSync(path.join(tmpdir(), "rst-pipeline-"));
   app.donors.filePath = path.join(dir, "donors.json");
   app.recent.filePath = path.join(dir, "recent.json");
+  app.tron.statePath = path.join(dir, "tron.json");
 
   return { app, cleanup: () => rmSync(dir, { recursive: true, force: true }) };
 }
@@ -39,6 +40,97 @@ const donation = (fields) => ({
   message: null,
   at: Date.now(),
   ...fields,
+});
+
+/** Что ушло в сокет алертов: только сами алерты, без приветствий. */
+function captureAlerts(app) {
+  const alerts = [];
+  const broadcast = app.hub.broadcast.bind(app.hub);
+  app.hub.broadcast = (channel, message) => {
+    if (channel === "/ws/alerts" && message.type === "alert") alerts.push(message);
+    broadcast(channel, message);
+  };
+  return alerts;
+}
+
+const tronDonation = (fields) => donation({
+  id: "tron-tx1",
+  source: "tron",
+  donorName: "TJTK…eKfa",
+  amount: 25,
+  currency: "USDT",
+  ...fields,
+});
+
+test("свежий перевод USDT доходит до алерта, топа и ленты", async () => {
+  const { app, cleanup } = makeApp();
+  const alerts = captureAlerts(app);
+
+  await app.onDonation(tronDonation());
+
+  assert.equal(alerts.length, 1);
+  assert.equal(alerts[0].tier, "big");
+  assert.equal(app.topSnapshot().donors[0].name, "TJTK…eKfa");
+  assert.equal(app.recent.history().length, 1);
+  cleanup();
+});
+
+test("перевод, пришедший пока программа была закрыта: топ и лента да, алерт нет", async () => {
+  const { app, cleanup } = makeApp();
+  const alerts = captureAlerts(app);
+
+  await app.onDonation(tronDonation({ quiet: true }));
+
+  assert.equal(alerts.length, 0);
+  assert.equal(app.topSnapshot().donors[0].total, 25);
+  assert.equal(app.recent.history().length, 1);
+  cleanup();
+});
+
+test("галочка площадки в тире выключает алерты USDT", async () => {
+  const { app, cleanup } = makeApp();
+  const alerts = captureAlerts(app);
+  for (const tier of app.config.alerts.tiers) tier.sources.tron = false;
+
+  await app.onDonation(tronDonation());
+
+  assert.equal(alerts.length, 0);
+  cleanup();
+});
+
+test("множитель USDT применяется в топе, как у остальных площадок", async () => {
+  const { app, cleanup } = makeApp();
+  app.config.tron = { ...app.config.tron, rate: 0.5 };
+
+  await app.onDonation(tronDonation({ amount: 10 }));
+
+  assert.equal(app.topSnapshot().donors[0].total, 5);
+  cleanup();
+});
+
+test("USDT виден в цели и в статусах панели, выключенный — как выключенный", () => {
+  const { app, cleanup } = makeApp();
+
+  assert.equal(app.goal.snapshot().sources.tron.enabled, false);
+  assert.equal(app.controlState().status.tron, "off");
+  cleanup();
+});
+
+test("команда обнуления сбрасывает сумму USDT и отвечает панели", async () => {
+  const { app, cleanup } = makeApp();
+  app.config.tron = { ...app.config.tron, enabled: true, address: "TWd4WrZ9wn84f5x1hZhL4DHvk738ns5jwb" };
+  app.tron.config = app.config.tron;
+  app.tron.state = { address: app.tron.address, since: 1, cursor: 1, amount: 40, seen: {} };
+
+  const sent = [];
+  app.handleCommand({ type: "tron.reset" }, { readyState: 1, send: (text) => sent.push(JSON.parse(text)) });
+  await app.tron.saving;
+  await new Promise((resolve) => setImmediate(resolve));
+
+  assert.equal(app.tron.amount, 0);
+  assert.equal(app.goal.snapshot().sources.tron.amount, 0);
+  assert.equal(sent[0].type, "toast");
+  cleanup();
 });
 
 test("настоящий донат попадает в таблицу донатеров", () => {

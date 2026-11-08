@@ -4,6 +4,7 @@ config.json
 *.log
 donors.json
 recent.json
+tron.json
 # Гифки и звуки алертов — файлы стримера, не наше дело.
 media/
 

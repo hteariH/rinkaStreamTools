@@ -13,7 +13,7 @@ import { mkdir, readdir, copyFile, stat } from "node:fs/promises";
 import path from "node:path";
 
 // Что именно считается данными стримера.
-const FILES = ["config.json", "donors.json", "recent.json"];
+const FILES = ["config.json", "donors.json", "recent.json", "tron.json"];
 const FOLDERS = ["media"];
 
 /**

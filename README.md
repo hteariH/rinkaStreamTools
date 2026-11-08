@@ -182,7 +182,22 @@ Rates are the multiplier from a platform currency to the goal currency. They are
 deliberately not fetched from the internet: rates move, and a number on screen should not
 jump around mid-stream. If both platforms use the same currency, leave `1`.
 
-There is also a **manual offset** — cash, crypto and anything that went past the platforms.
+**USDT (TRC-20)** is read directly from the TRON network rather than through a widget: just
+enter the public wallet address. No private key or seed phrase is needed — never enter those.
+
+- The address is checked once a minute through TronGrid, and only confirmed transfers of real
+  USDT count. The alert arrives about two minutes after sending.
+- The total counts from the moment the address is added; the existing wallet balance is not
+  included. Start a new fundraiser with the "Reset USDT total" button.
+- A transfer that arrives while the program is closed goes into the total, top and feed on
+  the next launch. An alert is shown only if the transfer is at most 5 minutes old.
+- Transfers carry no name or message, so a short address (`TJTK…eKfa`) is shown instead of a
+  nickname.
+- Transfers below the minimum amount (0.1 USDT by default) are ignored to filter out dust spam.
+- Your own transfers to this address, for example from an exchange, also count as donations.
+  It is better to use a separate address for donations.
+
+There is also a **manual offset** — cash, other crypto and anything that went past the platforms.
 
 There are four themes, and the goal, the top, the feed and the track each have their own:
 in one scene they usually share a theme, but not always — a thin `slim` bar under the game
